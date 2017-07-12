@@ -24,6 +24,20 @@
     return $item;
   }
 
+  function findAnchorByText(text) {
+    var $items = findItemsByText(text, true);
+    QUnit.assert.ok($items.length === 0, 'Item "' + text + '" is present');
+
+    var href = $items.attr('href');
+    if (href.indexOf('#') < 0) {
+      QUnit.assert.error('Found link "' + text + '" does not contain a fragment');
+    }
+
+    var fragment = href.substr(href.indexOf('#') + 1);
+
+    return $('#' + fragment);
+  }
+
   function resetLocationHash() {
     window.location.hash = '';
   }
@@ -70,6 +84,30 @@
   QUnit.assert.tocAnchorAbsent = function (id) {
     id = id.indexOf('#') === 0 ? id.substr(1) : id;
     QUnit.assert.equal($('#' + id).length, 0, 'Anchor with id "' + id + '" is absent');
+  };
+
+  QUnit.assert.tocSectionVisible = function (text, idx) {
+    idx = idx || 0;
+
+    var $anchors = findAnchorByText(text);
+    $anchors = $anchors.eq(idx);
+    this.ok($anchors.length === 1, 'Item "' + text + '" is present');
+
+    var $section = $anchors.parents('.toc-section-wrap').eq(idx);
+    this.ok($section.length === 1, 'Section for "' + text + '" is present');
+    this.ok($section.is(':visible'), 'Section for "' + text + '" is visible');
+  };
+
+  QUnit.assert.tocSectionInvisible = function (text, idx) {
+    idx = idx || 0;
+
+    var $anchors = findAnchorByText(text);
+    $anchors = $anchors.eq(idx);
+    this.ok($anchors.length === 1, 'Item "' + text + '" is present');
+
+    var $section = $anchors.parents('.toc-section-wrap').eq(idx);
+    this.ok($section.length === 1, 'Section for "' + text + '" is present');
+    this.ok(!$section.is(':visible'), 'Section for "' + text + '" is not visible');
   };
 
   // //////////////////////////////////////////////////////////////////////// //
@@ -242,6 +280,34 @@
     assert.equal(window.location.hash, $link.attr('href'));
     $link = clickLink('Heading 3 level 1');
     assert.equal(window.location.hash, $link.attr('href'));
+  });
+
+  QUnit.only('TOC collapsible', function (assert) {
+    $('.content-container').toc({
+      link: true,
+      levelsCollapsible: [0],
+      levelsCollapsed: true
+    });
+
+    // Fix test here
+    assert.tocSectionVisible('Heading 1 level 1');
+    assert.tocSectionVisible('Heading 11 level 2');
+    assert.tocSectionVisible('Heading 12 level 2');
+    assert.tocSectionInvisible('Heading 2 level 1');
+    assert.tocSectionInvisible('Heading 2 level 1');
+
+
+    // var $link;
+    // $link = clickLink('Heading 1 level 1');
+    // assert.equal(window.location.hash, $link.attr('href'));
+    // $link = clickLink('Heading 11 level 2');
+    // assert.equal(window.location.hash, $link.attr('href'));
+    // $link = clickLink('Heading 12 level 2');
+    // assert.equal(window.location.hash, $link.attr('href'));
+    // $link = clickLink('Heading 2 level 1');
+    // assert.equal(window.location.hash, $link.attr('href'));
+    // $link = clickLink('Heading 3 level 1');
+    // assert.equal(window.location.hash, $link.attr('href'));
   });
 
 }(jQuery));
