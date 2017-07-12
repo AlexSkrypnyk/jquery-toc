@@ -3,11 +3,15 @@
  * QUnit tests.
  */
 
-(function () {
+(function ($) {
   'use strict';
 
-  QUnit.module('Test of test system');
+  QUnit.module('Structure');
   QUnit.test('passing test', function (assert) {
+    $('.content-container').toc({
+      levelsCollapsed: true,
+      levelsCollapsible: [0]
+    });
     assert.ok(1 === 1, 'Passed!');
   });
-}());
+}(jQuery));
