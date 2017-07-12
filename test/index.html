@@ -13,7 +13,15 @@
   <script src="testinit.js"></script>
 
   <!--Required libraries-->
+  <!--Polyfill to run tests in PhantomJS <2.0-->
+  <script src="../bower_components/bind-polyfill/index.js"></script>
+  <!--Library for simulating user entry-->
+  <script src="../bower_components/jquery-simulate-ext/libs/bililiteRange.js"></script>
   <script src="../bower_components/jquery/dist/jquery.js"></script>
+  <!--Libraries for simulating user entry-->
+  <script src="../bower_components/jquery-simulate-ext/libs/jquery.simulate.js"></script>
+  <script src="../bower_components/jquery-simulate-ext/src/jquery.simulate.ext.js"></script>
+  <script src="../bower_components/jquery-simulate-ext/src/jquery.simulate.key-sequence.js"></script>
 
   <!--Testable files-->
   <script src="../src/jquery.toc.js"></script>
