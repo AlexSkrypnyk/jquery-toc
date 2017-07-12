@@ -10,7 +10,8 @@
     "matchMedia": true,
     "module": true,
     "Backbone": true,
-    "Modernizr": true
+    "Modernizr": true,
+    "QUnit": true
   },
   "rules": {
     // Errors.

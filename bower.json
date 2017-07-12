@@ -1,0 +1,30 @@
+{
+  "name": "jquery-toc",
+  "description": "jQuery plugin to generate Table of Contents from provided content.",
+  "main": "",
+  "authors": [
+    "Alex Skrypnyk (alex.designworks@gmail.com)"
+  ],
+  "license": "GPL-2.0",
+  "keywords": [
+    "toc",
+    "index",
+    "markup",
+    "structure"
+  ],
+  "homepage": "https://github.com/alexdesignworks/jquery-toc",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tests"
+  ],
+  "devDependencies": {
+    "jquery": "^3.2.1"
+  },
+  "dependencies": {
+    "qunit": "^2.4.0"
+  }
+}

@@ -28,7 +28,9 @@ module.exports = function (grunt) {
       'Gruntfile.js',
       'test/*.js',
       'test/unit/*.js'
-    ]
+    ],
+    // Test files location.
+    test: 'test'
   };
 
   // Expand app files from source dir if they were not specified in config.
@@ -43,6 +45,8 @@ module.exports = function (grunt) {
   grunt.loadNpmTasks('grunt-compare-size');
   grunt.loadNpmTasks('grunt-git-authors');
   grunt.loadNpmTasks('grunt-contrib-uglify');
+  grunt.loadNpmTasks('grunt-contrib-connect');
+  grunt.loadNpmTasks('grunt-contrib-qunit');
   grunt.loadNpmTasks('gruntify-eslint');
 
   grunt.initConfig({
@@ -62,6 +66,17 @@ module.exports = function (grunt) {
         options: {
           port: 8000,
           base: '.'
+        }
+      }
+    },
+
+    // Run QUnit.
+    qunit: {
+      all: {
+        options: {
+          urls: [
+            'http://localhost:8000/' + config.test + '/index.html'
+          ]
         }
       }
     },
@@ -104,11 +119,17 @@ module.exports = function (grunt) {
     // Uglify output.
     uglify: {
       options: {
+        output: {
+          quote_style: 3
+        },
         banner: '/* <%= pkg.title %> v.<%= pkg.version %> <%= pkg.homepage %> | License: <%= pkg.license %> */'
       },
       build: {
         files: [{
-          src: config.build + '/*.js',
+          src: [
+            config.build + '/**/*.js',
+            '!' + config.build + '/**/*.min.js'
+          ],
           dest: config.build + '/' + config.outputName.replace('.js', '.min.js')
         }]
       }
@@ -123,9 +144,11 @@ module.exports = function (grunt) {
   // Register tasks.
   //
   // Run all tasks by default.
-  grunt.registerTask('default', ['eslint', 'build', 'compare_size']);
+  grunt.registerTask('default', ['eslint', 'test', 'build', 'compare_size']);
   // Run code quality check.
   grunt.registerTask('lint', ['eslint']);
+  // Run tests.
+  grunt.registerTask('test', ['connect', 'qunit']);
   // Build distribution.
   grunt.registerTask('build', ['replace', 'uglify']);
 };
