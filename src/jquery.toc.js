@@ -28,7 +28,8 @@
       levelsCollapsible: [],
       levelsCollapsed: false,
       link: true,
-      sectionClass: 'toc-section-wrap'
+      sectionClass: 'toc-section-wrap',
+      trackClicked: false
     }, options);
 
     this.$element = $(element);
@@ -45,11 +46,11 @@
         self.addItem($this, level);
       });
 
-      if (this.options.link) {
-        this.addAnchors(this.tree);
+      if (self.options.link) {
+        self.addAnchors(self.tree);
 
-        if (this.options.levelsCollapsible.length > 0) {
-          this.wrapAllCollapsed(this.tree);
+        if (self.options.levelsCollapsible.length > 0) {
+          self.wrapAllCollapsed(self.tree);
           $(window).on('hashchange', function () {
             var activeItem = self.findActiveItem(window.location.hash.substr(1));
             activeItem = activeItem ? activeItem : self.getDefaultActiveSection();
@@ -57,24 +58,83 @@
               self.toggleSectionsVisibility(activeItem);
             }
           });
-          if (self.options.levelsCollapsed) {
-            $(window).trigger('hashchange');
-          }
         }
       }
 
-      this.$element.before(this.renderList(this.tree));
+      self.$toc = self.renderToc(self.tree);
+
+      if (self.options.trackClicked) {
+        self.$toc.find('a').on('click.toc', function () {
+          self.trackClickedLink($(this).attr('href'));
+        });
+      }
+
+      self.$element.before(self.$toc);
+
+      self.$element.on('next.toc', function (evt, data) {
+        var level = data.level || 0;
+        var nextItem = self.findNextItem(window.location.hash.substr(1), level);
+        if (nextItem) {
+          self.toggleSectionsVisibility(nextItem);
+        }
+      });
+
+      self.$element.on('prev.toc', function (evt, data) {
+        var level = data.level || 0;
+        var prevItem = self.findPrevItem(window.location.hash.substr(1), level);
+        if (prevItem) {
+          self.toggleSectionsVisibility(prevItem);
+        }
+      });
+
+      if (self.options.levelsCollapsed) {
+        $(window).trigger('hashchange');
+      }
+    },
+    trackClickedLink: function () {
+
     },
     toggleSectionsVisibility: function (activeItem) {
       this.getAllSections().hide();
       var $sections = this.getAllSectionsFromItem(activeItem);
       $sections.show();
+
+      var $tocElement = $('.toc-container').find('a[href="#' + activeItem.anchor + '"]');
+      this.$element.trigger('shown.toc', {
+        element: activeItem.element,
+        tocElement: $tocElement
+      });
+      window.location.hash = activeItem.anchor;
     },
     getAllSections: function () {
       return this.$element.find('.' + this.options.sectionClass);
     },
     getAllSectionsFromItem: function (item) {
       return item.element.parent('.' + this.options.sectionClass);
+    },
+    findNextItem: function (fragment, level) {
+      var list = this.toList(this.tree).filter(function (el) {
+        return el.level === level;
+      });
+
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].anchor === fragment && i + 1 < list.length) {
+          return list[i + 1];
+        }
+      }
+      return null;
+    },
+    findPrevItem: function (fragment, level) {
+      var list = this.toList(this.tree).filter(function (el) {
+        return el.level === level;
+      });
+
+      for (var i = 0; i < list.length; i++) {
+        if (list[i].anchor === fragment && i - 1 >= 0) {
+          return list[i - 1];
+        }
+      }
+      return null;
     },
     findActiveItem: function (fragment) {
       var active = this.toList(this.tree).filter(function (el) {
@@ -166,21 +226,32 @@
       this.anchors.push(uniqueAnchor);
       return uniqueAnchor;
     },
-    renderItem: function (item) {
+    renderItem: function (item, options) {
       var html = item.element.text();
       if (this.options.link) {
         html = '<a href="#' + item.anchor + '">' + html + '</a>';
       }
-      return '<li>' + html + '</li>';
+
+      var classes = [];
+      if (options.isFirst) {
+        classes.push('first');
+      }
+      if (options.isLast) {
+        classes.push('last');
+      }
+
+      return '<li class="' + classes.join(' ') + '">' + html + '</li>';
     },
     renderList: function (list) {
       var output = '<ul>';
-      for (var i in list) {
-        if (list.hasOwnProperty(i)) {
-          output += this.renderItem(list[i]);
-          if (list[i].children.length > 0) {
-            output += this.renderList(list[i].children);
-          }
+      for (var i = 0; i < list.length; i++) {
+        var itemOptions = {
+          isFirst: i === 0,
+          isLast: i === list.length - 1
+        };
+        output += this.renderItem(list[i], itemOptions);
+        if (list[i].children.length > 0) {
+          output += this.renderList(list[i].children);
         }
       }
       output += '</ul>';
@@ -192,6 +263,12 @@
     },
     renderSectionWrap: function ($set, level) {
       $set.wrapAll('<div class="' + this.options.sectionClass + ' level-' + level + '"></div>');
+    },
+    renderToc: function (tree) {
+      var output = '<div class="toc-container">';
+      output += this.renderList(tree);
+      output += '</div>';
+      return output;
     }
   });
 
