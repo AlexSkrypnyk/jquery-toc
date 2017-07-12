@@ -13,3 +13,18 @@
 	position: absolute;
 	left: -9999px;
 }
+
+#qunit-fixture.visible {
+	position: relative;
+	left: auto;
+	top: auto;
+	width: auto;
+	height: auto;
+	text-indent: 0;
+}
+
+.qunit-fixture {
+	padding: 10px;
+	margin-top: 20px;
+	background: #eaeaea;
+}
