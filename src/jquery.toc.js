@@ -17,6 +17,11 @@
     this.pluginName = pluginName;
     this.version = version;
 
+    this.EVENT_HASHCHANGE = 'hashchange.toc';
+    this.EVENT_PREV = 'prev.toc';
+    this.EVENT_NEXT = 'next.toc';
+    this.EVENT_SECTION_SHOWN = 'shown.toc.section';
+
     this.tree = [];
     this.anchors = [];
 
@@ -38,141 +43,147 @@
   $.extend(Plugin.prototype, {
     init: function () {
       var self = this;
+
+      // Build tree structure from provided heading.
       $(self.options.headings.join(','), self.$element).each(function () {
-        var $this = $(this);
-        var level = self.getLevel($this);
-        self.addItem($this, level);
+        self.addLeaf($(this));
       });
 
+      // Populate anchors for link-based TOC.
       if (self.options.link) {
         self.addAnchors(self.tree);
 
+        // Wrap content if using collapsible sections.
         if (self.options.levelsCollapsible.length > 0) {
           self.wrapAllCollapsed(self.tree);
-          $(window).on('hashchange.toc', function () {
-            var activeItem = self.findActiveItem(window.location.hash.substr(1));
-            activeItem = activeItem ? activeItem : self.getDefaultActiveSection();
-            if (activeItem) {
-              self.toggleSectionsVisibility(activeItem);
+
+          // Register activation on hash change.
+          $(window).on(self.EVENT_HASHCHANGE, function () {
+            var activeLeaf = self.findActiveLeaf(self.getCurrentFragment());
+            activeLeaf = activeLeaf ? activeLeaf : self.getDefaultActiveSection();
+            if (activeLeaf) {
+              self.showSection(activeLeaf);
             }
           });
         }
       }
 
-      self.$toc = self.renderToc(self.tree);
+      // Render TOC into internal structure.
+      self.$toc = self.renderToc();
 
+      // Add TOC to DOM.
       self.$element.before(self.$toc);
 
-      self.$element.on('next.toc', function (evt, data) {
+      // Register prev section event handler.
+      self.$element.on(self.EVENT_PREV, function (evt, data) {
         var level = data.level || 0;
-        var nextItem = self.findNextItem(window.location.hash.substr(1), level);
-        if (nextItem) {
-          self.toggleSectionsVisibility(nextItem);
+        var prevLeaf = self.findPrevLeafByFragment(self.getCurrentFragment(), level);
+        if (prevLeaf) {
+          self.showSection(prevLeaf);
         }
       });
 
-      self.$element.on('prev.toc', function (evt, data) {
+      // Register next section event handler.
+      self.$element.on(self.EVENT_NEXT, function (evt, data) {
         var level = data.level || 0;
-        var prevItem = self.findPrevItem(window.location.hash.substr(1), level);
-        if (prevItem) {
-          self.toggleSectionsVisibility(prevItem);
+        var nextLeaf = self.findNextLeafByFragment(self.getCurrentFragment(), level);
+        if (nextLeaf) {
+          self.showSection(nextLeaf);
         }
       });
 
       if (self.options.levelsCollapsed) {
-        $(window).trigger('hashchange.toc');
+        $(window).trigger(self.EVENT_HASHCHANGE);
       }
     },
-    toggleSectionsVisibility: function (activeItem) {
+    showSection: function (activeLeaf) {
       this.getAllSections().hide();
-      var $sections = this.getAllSectionsFromItem(activeItem);
+      var $sections = this.getAllSectionsFromLeaf(activeLeaf);
       $sections.show();
 
-      var $tocElement = $('.' + this.options.tocContainerClass).find('a[href="#' + activeItem.anchor + '"]');
-      this.$element.trigger('shown.toc', {
-        element: activeItem.element,
-        tocElement: $tocElement
+      var $tocLink = this.getTocLinkFromLeaf(activeLeaf);
+      this.$element.trigger(this.EVENT_SECTION_SHOWN, {
+        contentElement: activeLeaf.$element,
+        tocLink: $tocLink
       });
-      window.location.hash = activeItem.anchor;
+      this.setCurrentFragment(activeLeaf.fragment);
+    },
+    getTocContainer: function () {
+      return this.$element.parent().find('.' + this.options.tocContainerClass);
+    },
+    getTocLinkFromLeaf: function (leaf) {
+      return this.getTocContainer().find('[href="#' + leaf.fragment + '"]');
     },
     getAllSections: function () {
       return this.$element.find('.' + this.options.sectionClass);
     },
-    getAllSectionsFromItem: function (item) {
-      return item.element.parent('.' + this.options.sectionClass);
+    getAllSectionsFromLeaf: function (leaf) {
+      return leaf.$element.parent('.' + this.options.sectionClass);
     },
-    findNextItem: function (fragment, level) {
-      var list = this.toList(this.tree).filter(function (el) {
+    findNextLeafByFragment: function (fragment, level) {
+      var list = this.treeToList(this.tree).filter(function (el) {
         return el.level === level;
       });
 
       for (var i = 0; i < list.length; i++) {
-        if (list[i].anchor === fragment && i + 1 < list.length) {
+        if (list[i].fragment === fragment && i + 1 < list.length) {
           return list[i + 1];
         }
       }
       return null;
     },
-    findPrevItem: function (fragment, level) {
-      var list = this.toList(this.tree).filter(function (el) {
+    findPrevLeafByFragment: function (fragment, level) {
+      var list = this.treeToList(this.tree).filter(function (el) {
         return el.level === level;
       });
 
       for (var i = 0; i < list.length; i++) {
-        if (list[i].anchor === fragment && i - 1 >= 0) {
+        if (list[i].fragment === fragment && i - 1 >= 0) {
           return list[i - 1];
         }
       }
       return null;
     },
-    findActiveItem: function (fragment) {
-      var active = this.toList(this.tree).filter(function (el) {
-        return el.anchor === fragment;
+    findActiveLeaf: function (fragment) {
+      var $activeLeaf = this.treeToList(this.tree).filter(function (leaf) {
+        return leaf.fragment === fragment;
       });
 
-      return active.length > 0 ? active.pop() : null;
+      return $activeLeaf.length > 0 ? $activeLeaf.pop() : null;
     },
     getDefaultActiveSection: function () {
       return this.tree.length > 0 ? this.tree[0] : null;
     },
-    wrapAllCollapsed: function (tree) {
-      var self = this;
-
-      var list = this.toList(tree);
-
-      list = list.filter(function (el) {
-        return self.options.levelsCollapsible.indexOf(el.level) > -1;
-      });
-
-      for (var i = 0; i < list.length; i++) {
-        var next = i < list.length - 1 ? list[i + 1].element : null;
-        var $set = list[i].element.nextUntil(next);
-        $set = $set.add(list[i].element);
-        self.renderSectionWrap($set, list[i].level);
-      }
+    getCurrentFragment: function () {
+      return window.location.hash.substr(1);
     },
-    toList: function (tree) {
+    setCurrentFragment: function (fragment) {
+      if (fragment.indexOf('#') >= 0) {
+        fragment = fragment.substr(fragment.indexOf('#') + 1);
+      }
+      window.location.hash = fragment;
+    },
+    treeToList: function (tree) {
       var list = [];
 
-      for (var i in tree) {
-        if (tree.hasOwnProperty(i)) {
-          list.push(tree[i]);
-          if (tree[i].children.length > 0) {
-            $.merge(list, this.toList(tree[i].children));
-          }
+      for (var i = 0; i < tree.length; i++) {
+        list.push(tree[i]);
+        if (tree[i].children.length > 0) {
+          $.merge(list, this.treeToList(tree[i].children));
         }
       }
 
       return list;
     },
-    addItem: function ($el, level) {
+    addLeaf: function ($el, level) {
+      level = level || this.getLevel($el);
       var currentLevel = 0;
       var currentTree = this.tree;
 
       while (currentLevel < level) {
-        var last = currentTree.length - 1;
+        var last = Math.max(currentTree.length - 1, 0);
         var defaults = [{
-          element: null,
+          $element: null,
           children: []
         }];
         currentTree[last].children = currentTree[last].children || defaults;
@@ -180,7 +191,7 @@
         currentLevel++;
       }
       currentTree.push({
-        element: $el,
+        $element: $el,
         level: level,
         children: []
       });
@@ -194,13 +205,11 @@
       throw 'Unable to get level for provided element';
     },
     addAnchors: function (tree) {
-      for (var i in tree) {
-        if (tree.hasOwnProperty(i)) {
-          tree[i].anchor = this.generateAnchor(tree[i].element.text());
-          this.renderAnchor(tree[i]);
-          if (tree[i].children.length > 0) {
-            this.addAnchors(tree[i].children);
-          }
+      for (var i = 0; i < tree.length; i++) {
+        tree[i].fragment = this.generateAnchor(tree[i].$element.text());
+        this.renderAnchor(tree[i]);
+        if (tree[i].children.length > 0) {
+          this.addAnchors(tree[i].children);
         }
       }
     },
@@ -215,10 +224,24 @@
       this.anchors.push(uniqueAnchor);
       return uniqueAnchor;
     },
-    renderItem: function (item, options) {
-      var html = item.element.text();
+    wrapAllCollapsed: function (tree) {
+      var self = this;
+
+      var list = self.treeToList(tree).filter(function (el) {
+        return self.options.levelsCollapsible.indexOf(el.level) > -1;
+      });
+
+      for (var i = 0; i < list.length; i++) {
+        var $next = i < list.length - 1 ? list[i + 1].$element : null;
+        var $set = list[i].$element.nextUntil($next);
+        $set = $set.add(list[i].$element);
+        self.renderSectionWrap($set, list[i].level);
+      }
+    },
+    renderLeaf: function (leaf, options) {
+      var html = leaf.$element.text();
       if (this.options.link) {
-        html = '<a href="#' + item.anchor + '">' + html + '</a>';
+        html = '<a href="#' + leaf.fragment + '">' + html + '</a>';
       }
 
       var classes = [];
@@ -231,31 +254,31 @@
 
       return '<li class="' + classes.join(' ') + '">' + html + '</li>';
     },
-    renderList: function (list) {
+    renderTree: function (list) {
       var output = '<ul>';
       for (var i = 0; i < list.length; i++) {
-        var itemOptions = {
+        var leafOptions = {
           isFirst: i === 0,
           isLast: i === list.length - 1
         };
-        output += this.renderItem(list[i], itemOptions);
+        output += this.renderLeaf(list[i], leafOptions);
         if (list[i].children.length > 0) {
-          output += this.renderList(list[i].children);
+          output += this.renderTree(list[i].children);
         }
       }
       output += '</ul>';
 
       return output;
     },
-    renderAnchor: function (item) {
-      item.element.prepend('<a id="' + item.anchor + '"></a>');
+    renderAnchor: function (leaf) {
+      leaf.$element.prepend('<a id="' + leaf.fragment + '"></a>');
     },
     renderSectionWrap: function ($set, level) {
       $set.wrapAll('<div class="' + this.options.sectionClass + ' level-' + level + '"></div>');
     },
-    renderToc: function (tree) {
+    renderToc: function () {
       var output = '<div class="' + this.options.tocContainerClass + '">';
-      output += this.renderList(tree);
+      output += this.renderTree(this.tree);
       output += '</div>';
       return output;
     }

@@ -531,7 +531,7 @@
     }, 100);
   });
 
-  QUnit.only('TOC events - Pager', function (assert) {
+  QUnit.test('TOC events - Pager', function (assert) {
     var self = this;
     // Since this test deals with collapsing/expanding of the content, which
     // take time, sequential expanding/collapsing must be handled within delayed
@@ -564,15 +564,15 @@
     getContentContainer().append($next);
 
     // Allow hiding and showing pager buttons.
-    $(document).on('shown.toc', function (evt, data) {
-      if (data.tocElement.parent().hasClass('first')) {
+    $(document).on('shown.toc.section', function (evt, data) {
+      if (data.tocLink.parent().hasClass('first')) {
         $('.toc-btn-prev').hide();
       }
       else {
         $('.toc-btn-prev').show();
       }
 
-      if (data.tocElement.parent().hasClass('last')) {
+      if (data.tocLink.parent().hasClass('last')) {
         $('.toc-btn-next').hide();
       }
       else {
