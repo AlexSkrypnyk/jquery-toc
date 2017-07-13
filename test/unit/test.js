@@ -365,6 +365,16 @@
         return $link;
       };
 
+      this.assertTocItemActive = function (text) {
+        var $link = getElementByText(text, null, ELEMENT_TYPE_TOC);
+        QUnit.assert.ok($link.parent().hasClass('active'), 'TOC item with text "' + text + '" is active');
+      };
+
+      this.assertTocItemNotActive = function (text) {
+        var $link = getElementByText(text, null, ELEMENT_TYPE_TOC);
+        QUnit.assert.ok(!$link.parent().hasClass('active'), 'TOC item with text "' + text + '" is not active');
+      };
+
       setWindowLocationHash();
     }
   });
@@ -420,6 +430,12 @@
     assert.contentElementInvisible('Line 213');
     assert.contentElementInvisible('Heading 3 level 1');
 
+    self.assertTocItemActive('Heading 1 level 1');
+    self.assertTocItemNotActive('Heading 11 level 2');
+    self.assertTocItemNotActive('Heading 12 level 2');
+    self.assertTocItemNotActive('Heading 2 level 1');
+    self.assertTocItemNotActive('Heading 3 level 1');
+
     // Click TOC links and make sure that relevant items are visible/invisible.
 
     // Assert that clicking on the already opened top-level item from open
@@ -438,94 +454,142 @@
     assert.contentElementInvisible('Line 213');
     assert.contentElementInvisible('Heading 3 level 1');
 
+    self.assertTocItemActive('Heading 1 level 1');
+    self.assertTocItemNotActive('Heading 11 level 2');
+    self.assertTocItemNotActive('Heading 12 level 2');
+    self.assertTocItemNotActive('Heading 2 level 1');
+    self.assertTocItemNotActive('Heading 3 level 1');
+
     // Assert that clicking on the first of sub-level item from open section
     // preserves the state of that section.
     assert.urlFragment(self.clickTocItem('Heading 11 level 2').attr('href'));
-    assert.contentElementVisible('Line 111');
-    assert.contentElementVisible('Line 112');
-    assert.contentElementVisible('Line 113');
-    assert.contentElementVisible('Line 121');
-    assert.contentElementVisible('Line 122');
-    assert.contentElementVisible('Line 123');
-    assert.contentElementVisible('Line 131');
-    assert.contentElementVisible('Line 132');
-    assert.contentElementInvisible('Heading 2 level 1');
-    assert.contentElementInvisible('Line 211');
-    assert.contentElementInvisible('Line 213');
-    assert.contentElementInvisible('Heading 3 level 1');
-
-    // Assert that clicking on the second of sub-level item from open section
-    // preserves the state of that section.
-    assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
-    assert.contentElementVisible('Line 111');
-    assert.contentElementVisible('Line 112');
-    assert.contentElementVisible('Line 113');
-    assert.contentElementVisible('Line 121');
-    assert.contentElementVisible('Line 122');
-    assert.contentElementVisible('Line 123');
-    assert.contentElementVisible('Line 131');
-    assert.contentElementVisible('Line 132');
-    assert.contentElementInvisible('Heading 2 level 1');
-    assert.contentElementInvisible('Line 211');
-    assert.contentElementInvisible('Line 213');
-    assert.contentElementInvisible('Heading 3 level 1');
-
-    // Assert that clicking on the second top-level item from closed section
-    // opens that section and closes current one.
-    assert.urlFragment(self.clickTocItem('Heading 2 level 1').attr('href'));
-    var done1 = assert.async();
+    var done = assert.async();
     setTimeout(function () {
-      assert.contentElementInvisible('Line 111');
-      assert.contentElementInvisible('Line 112');
-      assert.contentElementInvisible('Line 113');
-      assert.contentElementInvisible('Line 121');
-      assert.contentElementInvisible('Line 122');
-      assert.contentElementInvisible('Line 123');
-      assert.contentElementInvisible('Line 131');
-      assert.contentElementInvisible('Line 132');
-      assert.contentElementVisible('Heading 2 level 1');
-      assert.contentElementVisible('Line 211');
-      assert.contentElementVisible('Line 213');
+      assert.contentElementVisible('Line 111');
+      assert.contentElementVisible('Line 112');
+      assert.contentElementVisible('Line 113');
+      assert.contentElementVisible('Line 121');
+      assert.contentElementVisible('Line 122');
+      assert.contentElementVisible('Line 123');
+      assert.contentElementVisible('Line 131');
+      assert.contentElementVisible('Line 132');
+      assert.contentElementInvisible('Heading 2 level 1');
+      assert.contentElementInvisible('Line 211');
+      assert.contentElementInvisible('Line 213');
       assert.contentElementInvisible('Heading 3 level 1');
-      done1();
 
-      // Assert that clicking on the third top-level item from closed section
-      // opens that section and closes current one.
-      assert.urlFragment(self.clickTocItem('Heading 3 level 1').attr('href'));
-      var done2 = assert.async();
+      self.assertTocItemActive('Heading 1 level 1');
+      self.assertTocItemActive('Heading 11 level 2');
+      self.assertTocItemNotActive('Heading 12 level 2');
+      self.assertTocItemNotActive('Heading 2 level 1');
+      self.assertTocItemNotActive('Heading 3 level 1');
+      done();
+
+      // Assert that clicking on the second of sub-level item from open section
+      // preserves the state of that section.
+      assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
+      var done1 = assert.async();
       setTimeout(function () {
-        assert.contentElementInvisible('Line 111');
-        assert.contentElementInvisible('Line 112');
-        assert.contentElementInvisible('Line 113');
-        assert.contentElementInvisible('Line 121');
-        assert.contentElementInvisible('Line 122');
-        assert.contentElementInvisible('Line 123');
-        assert.contentElementInvisible('Line 131');
-        assert.contentElementInvisible('Line 132');
+        assert.contentElementVisible('Line 111');
+        assert.contentElementVisible('Line 112');
+        assert.contentElementVisible('Line 113');
+        assert.contentElementVisible('Line 121');
+        assert.contentElementVisible('Line 122');
+        assert.contentElementVisible('Line 123');
+        assert.contentElementVisible('Line 131');
+        assert.contentElementVisible('Line 132');
         assert.contentElementInvisible('Heading 2 level 1');
         assert.contentElementInvisible('Line 211');
         assert.contentElementInvisible('Line 213');
-        assert.contentElementVisible('Heading 3 level 1');
-        done2();
+        assert.contentElementInvisible('Heading 3 level 1');
 
-        // Assert that clicking on the sub-item from closed section opens that
-        // section and closes current one.
-        assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
-        var done3 = assert.async();
+        self.assertTocItemActive('Heading 1 level 1');
+        self.assertTocItemNotActive('Heading 11 level 2');
+        self.assertTocItemActive('Heading 12 level 2');
+        self.assertTocItemNotActive('Heading 2 level 1');
+        self.assertTocItemNotActive('Heading 3 level 1');
+
+        done1();
+
+        // Assert that clicking on the second top-level item from closed section
+        // opens that section and closes current one.
+        assert.urlFragment(self.clickTocItem('Heading 2 level 1').attr('href'));
+        var done2 = assert.async();
         setTimeout(function () {
-          assert.contentElementVisible('Line 111');
-          assert.contentElementVisible('Line 112');
-          assert.contentElementVisible('Line 113');
-          assert.contentElementVisible('Line 121');
-          assert.contentElementVisible('Line 122');
-          assert.contentElementVisible('Line 123');
-          assert.contentElementVisible('Line 131');
-          assert.contentElementVisible('Line 132');
-          assert.contentElementInvisible('Heading 2 level 1');
-          assert.contentElementInvisible('Line 211');
-          assert.contentElementInvisible('Line 213');
+          assert.contentElementInvisible('Line 111');
+          assert.contentElementInvisible('Line 112');
+          assert.contentElementInvisible('Line 113');
+          assert.contentElementInvisible('Line 121');
+          assert.contentElementInvisible('Line 122');
+          assert.contentElementInvisible('Line 123');
+          assert.contentElementInvisible('Line 131');
+          assert.contentElementInvisible('Line 132');
+          assert.contentElementVisible('Heading 2 level 1');
+          assert.contentElementVisible('Line 211');
+          assert.contentElementVisible('Line 213');
           assert.contentElementInvisible('Heading 3 level 1');
-          done3();
+
+          self.assertTocItemNotActive('Heading 1 level 1');
+          self.assertTocItemNotActive('Heading 11 level 2');
+          self.assertTocItemNotActive('Heading 12 level 2');
+          self.assertTocItemActive('Heading 2 level 1');
+          self.assertTocItemNotActive('Heading 3 level 1');
+
+          done2();
+
+          // Assert that clicking on the third top-level item from closed section
+          // opens that section and closes current one.
+          assert.urlFragment(self.clickTocItem('Heading 3 level 1').attr('href'));
+          var done3 = assert.async();
+          setTimeout(function () {
+            assert.contentElementInvisible('Line 111');
+            assert.contentElementInvisible('Line 112');
+            assert.contentElementInvisible('Line 113');
+            assert.contentElementInvisible('Line 121');
+            assert.contentElementInvisible('Line 122');
+            assert.contentElementInvisible('Line 123');
+            assert.contentElementInvisible('Line 131');
+            assert.contentElementInvisible('Line 132');
+            assert.contentElementInvisible('Heading 2 level 1');
+            assert.contentElementInvisible('Line 211');
+            assert.contentElementInvisible('Line 213');
+            assert.contentElementVisible('Heading 3 level 1');
+
+            self.assertTocItemNotActive('Heading 1 level 1');
+            self.assertTocItemNotActive('Heading 11 level 2');
+            self.assertTocItemNotActive('Heading 12 level 2');
+            self.assertTocItemNotActive('Heading 2 level 1');
+            self.assertTocItemActive('Heading 3 level 1');
+
+            done3();
+
+            // Assert that clicking on the sub-item from closed section opens that
+            // section and closes current one.
+            assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
+            var done4 = assert.async();
+            setTimeout(function () {
+              assert.contentElementVisible('Line 111');
+              assert.contentElementVisible('Line 112');
+              assert.contentElementVisible('Line 113');
+              assert.contentElementVisible('Line 121');
+              assert.contentElementVisible('Line 122');
+              assert.contentElementVisible('Line 123');
+              assert.contentElementVisible('Line 131');
+              assert.contentElementVisible('Line 132');
+              assert.contentElementInvisible('Heading 2 level 1');
+              assert.contentElementInvisible('Line 211');
+              assert.contentElementInvisible('Line 213');
+              assert.contentElementInvisible('Heading 3 level 1');
+
+              self.assertTocItemActive('Heading 1 level 1');
+              self.assertTocItemNotActive('Heading 11 level 2');
+              self.assertTocItemActive('Heading 12 level 2');
+              self.assertTocItemNotActive('Heading 2 level 1');
+              self.assertTocItemNotActive('Heading 3 level 1');
+
+              done4();
+            }, 100);
+          }, 100);
         }, 100);
       }, 100);
     }, 100);
@@ -582,6 +646,14 @@
 
     assert.contentElementVisible('< Prev');
     assert.contentElementVisible('Next >');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementVisible('Line 111');
+
+    self.assertTocItemActive('Heading 1 level 1');
+    self.assertTocItemNotActive('Heading 11 level 2');
+    self.assertTocItemNotActive('Heading 12 level 2');
+    self.assertTocItemNotActive('Heading 2 level 1');
+    self.assertTocItemNotActive('Heading 3 level 1');
 
     // Assert that clicking on the second top-level item from closed section
     // opens that section and closes current one.
@@ -592,6 +664,13 @@
       assert.contentElementInvisible('Line 111');
       assert.contentElementVisible('< Prev');
       assert.contentElementVisible('Next >');
+
+      self.assertTocItemNotActive('Heading 1 level 1');
+      self.assertTocItemNotActive('Heading 11 level 2');
+      self.assertTocItemNotActive('Heading 12 level 2');
+      self.assertTocItemActive('Heading 2 level 1');
+      self.assertTocItemNotActive('Heading 3 level 1');
+
       done1();
 
       // Click on the Previous page link - section 1.
@@ -602,6 +681,13 @@
         assert.contentElementInvisible('Line 211');
         assert.contentElementInvisible('< Prev');
         assert.contentElementVisible('Next >');
+
+        self.assertTocItemActive('Heading 1 level 1');
+        self.assertTocItemNotActive('Heading 11 level 2');
+        self.assertTocItemNotActive('Heading 12 level 2');
+        self.assertTocItemNotActive('Heading 2 level 1');
+        self.assertTocItemNotActive('Heading 3 level 1');
+
         done2();
 
         // Click on the Next page link - section 2.
@@ -612,6 +698,13 @@
           assert.contentElementVisible('Line 211');
           assert.contentElementVisible('< Prev');
           assert.contentElementVisible('Next >');
+
+          self.assertTocItemNotActive('Heading 1 level 1');
+          self.assertTocItemNotActive('Heading 11 level 2');
+          self.assertTocItemNotActive('Heading 12 level 2');
+          self.assertTocItemActive('Heading 2 level 1');
+          self.assertTocItemNotActive('Heading 3 level 1');
+
           done3();
 
           // Click on the Next page link again - Section 3.
@@ -622,6 +715,13 @@
             assert.contentElementInvisible('Line 211');
             assert.contentElementVisible('< Prev');
             assert.contentElementInvisible('Next >');
+
+            self.assertTocItemNotActive('Heading 1 level 1');
+            self.assertTocItemNotActive('Heading 11 level 2');
+            self.assertTocItemNotActive('Heading 12 level 2');
+            self.assertTocItemNotActive('Heading 2 level 1');
+            self.assertTocItemActive('Heading 3 level 1');
+
             done4();
           }, 100);
         }, 100);

@@ -107,6 +107,12 @@
         tocLink: $tocLink
       });
       this.setCurrentFragment(activeLeaf.fragment);
+      this.processActiveTocLink($tocLink);
+    },
+    processActiveTocLink: function ($link) {
+      var $parents = $link.parentsUntil(this.getTocContainer()).filter('li');
+      this.getTocContainer().find('li').not($parents).removeClass('active');
+      $parents.filter(':not(.active)').addClass('active');
     },
     getTocContainer: function () {
       return this.$element.parent().find('.' + this.options.tocContainerClass);
@@ -238,6 +244,24 @@
         self.renderSectionWrap($set, list[i].level);
       }
     },
+    renderTree: function (list) {
+      var output = '<ul>';
+      for (var i = 0; i < list.length; i++) {
+        var subtreeOutput = '';
+        if (list[i].children.length > 0) {
+          subtreeOutput = this.renderTree(list[i].children);
+        }
+        var leafOptions = {
+          isFirst: i === 0,
+          isLast: i === list.length - 1,
+          suffix: subtreeOutput
+        };
+        output += this.renderLeaf(list[i], leafOptions);
+      }
+      output += '</ul>';
+
+      return output;
+    },
     renderLeaf: function (leaf, options) {
       var html = leaf.$element.text();
       if (this.options.link) {
@@ -252,23 +276,7 @@
         classes.push('last');
       }
 
-      return '<li class="' + classes.join(' ') + '">' + html + '</li>';
-    },
-    renderTree: function (list) {
-      var output = '<ul>';
-      for (var i = 0; i < list.length; i++) {
-        var leafOptions = {
-          isFirst: i === 0,
-          isLast: i === list.length - 1
-        };
-        output += this.renderLeaf(list[i], leafOptions);
-        if (list[i].children.length > 0) {
-          output += this.renderTree(list[i].children);
-        }
-      }
-      output += '</ul>';
-
-      return output;
+      return '<li class="' + classes.join(' ') + '">' + html + options.suffix + '</li>';
     },
     renderAnchor: function (leaf) {
       leaf.$element.prepend('<a id="' + leaf.fragment + '"></a>');
