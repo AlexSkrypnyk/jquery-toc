@@ -34,7 +34,9 @@
       sectionClass: 'toc-section-wrap',
       tocContainerClass: 'toc-container',
       tocAnchorClass: 'toc-anchor',
-      tocAnchorPrefix: 'toc-anchor-'
+      tocAnchorPrefix: 'toc-anchor-',
+      afterRender: function ($tocContainer) {
+      }
     }, options);
 
     this.$element = $(element);
@@ -70,11 +72,10 @@
         }
       }
 
-      // Render TOC into internal structure.
-      self.$toc = self.renderToc();
-
       // Add TOC to DOM.
-      self.$element.before(self.$toc);
+      self.$toc = $(self.renderToc()).insertBefore(self.$element);
+
+      self.options.afterRender.call(self.$element, self.$toc);
 
       // Register prev section event handler.
       self.$element.on(self.EVENT_PREV, function (evt, data) {
