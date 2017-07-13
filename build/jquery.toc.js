@@ -223,7 +223,7 @@
       }
     },
     generateAnchor: function (text) {
-      var anchor = text.toLowerCase().replace(/ /g, '-');
+      var anchor = text.toLowerCase().replace(/[^a-z0-9]/, '').replace(/ /g, '-');
       var uniqueAnchor = anchor;
       var delta = 2;
       while (this.anchors.indexOf(uniqueAnchor) > -1) {
