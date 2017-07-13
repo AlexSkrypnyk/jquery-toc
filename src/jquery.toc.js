@@ -63,8 +63,16 @@
 
           // Register activation on hash change.
           $(window).on(self.EVENT_HASHCHANGE, function () {
-            var activeLeaf = self.findActiveLeaf(self.getCurrentFragment());
-            activeLeaf = activeLeaf ? activeLeaf : self.getDefaultActiveSection();
+            var activeLeaf = null;
+            var fragment = self.getCurrentFragment();
+            // No fragment - provide default.
+            if (fragment.length === 0) {
+              activeLeaf = self.getDefaultActiveSection();
+            }
+            // Fragment provided - check that it is TOC-related fragment.
+            else if (fragment.indexOf(self.options.tocAnchorPrefix) === 0) {
+              activeLeaf = self.findActiveLeaf(fragment);
+            }
             if (activeLeaf) {
               self.showSection(activeLeaf);
             }
@@ -234,8 +242,7 @@
       return this.tree.length > 0 ? this.tree[0] : null;
     },
     getCurrentFragment: function () {
-      var fragment = window.location.hash.substr(1);
-      return fragment.indexOf(this.options.tocAnchorPrefix) === 0 ? fragment : '';
+      return window.location.hash.substr(1);
     },
     setCurrentFragment: function (fragment) {
       if (fragment.indexOf('#') >= 0) {
