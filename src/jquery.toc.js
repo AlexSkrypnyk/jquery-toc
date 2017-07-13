@@ -33,7 +33,8 @@
       link: true,
       sectionClass: 'toc-section-wrap',
       tocContainerClass: 'toc-container',
-      tocAnchorClass: 'toc-anchor'
+      tocAnchorClass: 'toc-anchor',
+      tocAnchorPrefix: 'toc-anchor-'
     }, options);
 
     this.$element = $(element);
@@ -232,7 +233,8 @@
       return this.tree.length > 0 ? this.tree[0] : null;
     },
     getCurrentFragment: function () {
-      return window.location.hash.substr(1);
+      var fragment = window.location.hash.substr(1);
+      return fragment.indexOf(this.options.tocAnchorPrefix) === 0 ? fragment : '';
     },
     setCurrentFragment: function (fragment) {
       if (fragment.indexOf('#') >= 0) {
@@ -294,7 +296,7 @@
       }
     },
     generateAnchor: function (text) {
-      var anchor = text.toLowerCase().replace(/[^a-z0-9]/, '').replace(/ /g, '-');
+      var anchor = this.options.tocAnchorPrefix + text.toLowerCase().replace(/[^a-z0-9]/, '').replace(/ /g, '-');
       var uniqueAnchor = anchor;
       var delta = 2;
       while (this.anchors.indexOf(uniqueAnchor) > -1) {
