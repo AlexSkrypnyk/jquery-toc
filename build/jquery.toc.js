@@ -32,7 +32,8 @@
       levelsCollapsed: false,
       link: true,
       sectionClass: 'toc-section-wrap',
-      tocContainerClass: 'toc-container'
+      tocContainerClass: 'toc-container',
+      tocAnchorClass: 'toc-anchor'
     }, options);
 
     this.$element = $(element);
@@ -355,7 +356,7 @@
       return '<li class="' + classes.join(' ') + '">' + html + options.suffix + '</li>';
     },
     renderAnchor: function (leaf) {
-      leaf.$element.prepend('<a id="' + leaf.fragment + '"></a>');
+      leaf.$element.prepend('<a class="' + this.options.tocAnchorClass + '" id="' + leaf.fragment + '"></a>');
     },
     renderSectionWrap: function ($set, level) {
       $set.wrapAll('<div class="' + this.options.sectionClass + ' level-' + level + '"></div>');
