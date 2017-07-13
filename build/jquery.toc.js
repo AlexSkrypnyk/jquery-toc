@@ -153,6 +153,11 @@
           if (parentLeaves[k].level === level) {
             var parentSiblingLeaves = this.findSiblingLeaves(this.tree, parentLeaves[k]);
             leaf = this.getPrevSiblingLeave(parentSiblingLeaves, parentLeaves[k]);
+            // If there are no parent siblings and current parent is a first
+            // parent - use it.
+            if (!leaf && parentSiblingLeaves.length > 0 && parentLeaves[k] === parentSiblingLeaves[0]) {
+              leaf = parentLeaves[k];
+            }
             break;
           }
         }
@@ -175,6 +180,11 @@
           if (parentLeaves[k].level === level) {
             var parentSiblingLeaves = this.findSiblingLeaves(this.tree, parentLeaves[k]);
             leaf = this.getNextSiblingLeave(parentSiblingLeaves, parentLeaves[k]);
+            // If there are no parent siblings and current parent is a last
+            // parent - use it.
+            if (!leaf && parentSiblingLeaves.length > 0 && parentLeaves[k] === parentSiblingLeaves[parentSiblingLeaves.length - 1]) {
+              leaf = parentLeaves[k];
+            }
             break;
           }
         }
