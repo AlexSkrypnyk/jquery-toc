@@ -45,13 +45,6 @@
     window.location.hash = '';
   }
 
-  function clickLink(text) {
-    var $link = findItemsByText(text, true);
-    QUnit.assert.ok($link.length > 0);
-    $link.simulate('click');
-    return $link;
-  }
-
   function getElementByText(text, $parents, type) {
     type = type || ELEMENT_TYPE_CONTENT;
     var $set = type === ELEMENT_TYPE_CONTENT ? getContentContainer() : getTocContainer();
@@ -165,6 +158,14 @@
     this.equal($item.filter(':not(:visible)').length, count, 'Content element with text "' + text + '" is invisible');
   };
 
+  QUnit.assert.urlFragment = function (url) {
+    if (url.length > 0 && url.indexOf('#') < 0) {
+      throw 'Link does not contain a fragment';
+    }
+    var fragment = url.substr(url.indexOf('#') + 1);
+    this.equal(window.location.hash.substr(1), fragment);
+  };
+
   // //////////////////////////////////////////////////////////////////////// //
   // ////////////////////////////////// TESTS /////////////////////////////// //
   // //////////////////////////////////////////////////////////////////////// //
@@ -220,7 +221,7 @@
     assert.equal($s.find('span').length, 1, 'Returned deepest items preserve inner HTML');
   });
 
-  QUnit.test('Assertions', function (assert) {
+  QUnit.test('Assertions - Elements', function (assert) {
     this.injectHtml('<p>unique string</p>');
     assert.contentElementVisible('unique string');
     assert.contentElementVisible('unique string', 1);
@@ -246,6 +247,17 @@
     this.injectHtml('<p>unique string</p>', 'content-container', true);
     assert.contentElementVisible('unique string', 1);
     assert.contentElementInvisible('unique string', 1);
+  });
+
+  QUnit.test('Assertions - URL Fragment', function (assert) {
+    window.location.hash = '';
+    assert.urlFragment('');
+
+    window.location.hash = '';
+    assert.urlFragment('#');
+
+    window.location.hash = 'unique-hash';
+    assert.urlFragment('#unique-hash');
   });
 
   QUnit.module('Structure');
@@ -295,7 +307,7 @@
   });
 
   QUnit.test('TOC links', function (assert) {
-    $('.content-container').toc({
+    getContentContainer().toc({
       link: true
     });
 
@@ -339,7 +351,7 @@
   });
 
   QUnit.test('TOC links - top level', function (assert) {
-    $('.content-container').toc({
+    getContentContainer().toc({
       headings: ['h2'],
       link: true
     });
@@ -366,7 +378,7 @@
   });
 
   QUnit.test('TOC links - non-top level', function (assert) {
-    $('.content-container').toc({
+    getContentContainer().toc({
       headings: ['h3'],
       link: true
     });
@@ -394,63 +406,177 @@
 
   QUnit.module('Interaction', {
     beforeEach: function () {
+      this.clickTocItem = function (text) {
+        var $link = findItemsByText(text, true);
+        QUnit.assert.ok($link.length > 0);
+        $link.simulate('click');
+        return $link;
+      };
+
       resetLocationHash();
     }
   });
   QUnit.test('TOC click fragment', function (assert) {
-    $('.content-container').toc({
+    getContentContainer().toc({
       link: true
     });
 
-    var $link;
-
-    $link = clickLink('Heading 1 level 1');
-    assert.equal(window.location.hash, $link.attr('href'));
-    $link = clickLink('Heading 11 level 2');
-    assert.equal(window.location.hash, $link.attr('href'));
-    $link = clickLink('Heading 12 level 2');
-    assert.equal(window.location.hash, $link.attr('href'));
-    $link = clickLink('Heading 2 level 1');
-    assert.equal(window.location.hash, $link.attr('href'));
-    $link = clickLink('Heading 3 level 1');
-    assert.equal(window.location.hash, $link.attr('href'));
+    assert.urlFragment(this.clickTocItem('Heading 1 level 1').attr('href'));
+    assert.urlFragment(this.clickTocItem('Heading 11 level 2').attr('href'));
+    assert.urlFragment(this.clickTocItem('Heading 12 level 2').attr('href'));
+    assert.urlFragment(this.clickTocItem('Heading 2 level 1').attr('href'));
+    assert.urlFragment(this.clickTocItem('Heading 3 level 1').attr('href'));
   });
 
   QUnit.test('TOC collapsible', function (assert) {
-    $('.content-container').toc({
+    var self = this;
+    // Since this test deals with collapsing/expanding of the content, which
+    // take time, sequential expanding/collapsing must be handled within delayed
+    // callbacks, therefore a test timeout should be set.
+    //
+    // 2 seconds is 4-6 times more than required for transitions within tests.
+    assert.timeout(2000);
+
+    getContentContainer().toc({
       link: true,
       levelsCollapsible: [0],
       levelsCollapsed: true
     });
 
-    // assert.tocElementVisible('Heading 1 level 1');
-    // assert.tocElementVisible('Heading 11 level 2');
-    // assert.tocElementVisible('Heading 12 level 2');
+    // Assert that all TOC items are in place.
+    assert.tocElementVisible('Heading 1 level 1');
+    assert.tocElementVisible('Heading 11 level 2');
+    assert.tocElementVisible('Heading 12 level 2');
     assert.tocElementVisible('Heading 13 level 2 repeating', 3);
-    // assert.tocElementVisible('Heading 2 level 1');
-    // assert.tocElementVisible('Heading 3 level 1');
+    assert.tocElementVisible('Heading 2 level 1');
+    assert.tocElementVisible('Heading 3 level 1');
 
-    //
-    // assert.tocElementVisible('Heading 1 level 1');
-    // assert.tocSectionVisible('Heading 11 level 2');
-    // assert.tocSectionVisible('Heading 12 level 2');
-    // assert.tocSectionInvisible('Heading 2 level 1');
-    // assert.tocSectionInvisible('Heading 3 level 1');
+    // Assert that start state of elements is as expected.
+    assert.contentElementVisible('Heading 1 level 1');
+    assert.contentElementVisible('Heading 11 level 2');
+    assert.contentElementVisible('Heading 12 level 2');
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementInvisible('Heading 2 level 1');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementInvisible('Line 213');
+    assert.contentElementInvisible('Heading 3 level 1');
 
-    // assert.contentElementVisible('Heading 1 level 1');
-    // assert.contentElementInvisible('Heading 3 level 1');
+    // Click TOC links and make sure that relevant items are visible/invisible.
 
-    // var $link;
-    // $link = clickLink('Heading 1 level 1');
-    // assert.equal(window.location.hash, $link.attr('href'));
-    // $link = clickLink('Heading 11 level 2');
-    // assert.equal(window.location.hash, $link.attr('href'));
-    // $link = clickLink('Heading 12 level 2');
-    // assert.equal(window.location.hash, $link.attr('href'));
-    // $link = clickLink('Heading 2 level 1');
-    // assert.equal(window.location.hash, $link.attr('href'));
-    // $link = clickLink('Heading 3 level 1');
-    // assert.equal(window.location.hash, $link.attr('href'));
+    // Assert that clicking on the already opened top-level item from open
+    // section preserves the state of that section.
+    assert.urlFragment(self.clickTocItem('Heading 1 level 1').attr('href'));
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementInvisible('Heading 2 level 1');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementInvisible('Line 213');
+    assert.contentElementInvisible('Heading 3 level 1');
+
+    // Assert that clicking on the first of sub-level item from open section
+    // preserves the state of that section.
+    assert.urlFragment(self.clickTocItem('Heading 11 level 2').attr('href'));
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementInvisible('Heading 2 level 1');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementInvisible('Line 213');
+    assert.contentElementInvisible('Heading 3 level 1');
+
+    // Assert that clicking on the second of sub-level item from open section
+    // preserves the state of that section.
+    assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementInvisible('Heading 2 level 1');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementInvisible('Line 213');
+    assert.contentElementInvisible('Heading 3 level 1');
+
+    // Assert that clicking on the second top-level item from closed section
+    // opens that section and closes current one.
+    assert.urlFragment(self.clickTocItem('Heading 2 level 1').attr('href'));
+    var done1 = assert.async();
+    setTimeout(function () {
+      assert.contentElementInvisible('Line 111');
+      assert.contentElementInvisible('Line 112');
+      assert.contentElementInvisible('Line 113');
+      assert.contentElementInvisible('Line 121');
+      assert.contentElementInvisible('Line 122');
+      assert.contentElementInvisible('Line 123');
+      assert.contentElementInvisible('Line 131');
+      assert.contentElementInvisible('Line 132');
+      assert.contentElementVisible('Heading 2 level 1');
+      assert.contentElementVisible('Line 211');
+      assert.contentElementVisible('Line 213');
+      assert.contentElementInvisible('Heading 3 level 1');
+      done1();
+
+      // Assert that clicking on the third top-level item from closed section
+      // opens that section and closes current one.
+      assert.urlFragment(self.clickTocItem('Heading 3 level 1').attr('href'));
+      var done2 = assert.async();
+      setTimeout(function () {
+        assert.contentElementInvisible('Line 111');
+        assert.contentElementInvisible('Line 112');
+        assert.contentElementInvisible('Line 113');
+        assert.contentElementInvisible('Line 121');
+        assert.contentElementInvisible('Line 122');
+        assert.contentElementInvisible('Line 123');
+        assert.contentElementInvisible('Line 131');
+        assert.contentElementInvisible('Line 132');
+        assert.contentElementInvisible('Heading 2 level 1');
+        assert.contentElementInvisible('Line 211');
+        assert.contentElementInvisible('Line 213');
+        assert.contentElementVisible('Heading 3 level 1');
+        done2();
+
+        // Assert that clicking on the sub-item from closed section opens that
+        // section and closes current one.
+        assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
+        var done3 = assert.async();
+        setTimeout(function () {
+          assert.contentElementVisible('Line 111');
+          assert.contentElementVisible('Line 112');
+          assert.contentElementVisible('Line 113');
+          assert.contentElementVisible('Line 121');
+          assert.contentElementVisible('Line 122');
+          assert.contentElementVisible('Line 123');
+          assert.contentElementVisible('Line 131');
+          assert.contentElementVisible('Line 132');
+          assert.contentElementInvisible('Heading 2 level 1');
+          assert.contentElementInvisible('Line 211');
+          assert.contentElementInvisible('Line 213');
+          assert.contentElementInvisible('Heading 3 level 1');
+          done3();
+        }, 100);
+      }, 100);
+    }, 100);
   });
 
 }(jQuery));
