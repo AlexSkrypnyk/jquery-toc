@@ -187,15 +187,18 @@
       var currentTree = this.tree;
 
       while (currentLevel < level) {
-        var last = Math.max(currentTree.length - 1, 0);
-        var defaults = [{
-          $element: null,
-          children: []
-        }];
-        currentTree[last].children = currentTree[last].children || defaults;
+        if (currentTree.length === 0) {
+          currentTree.push({
+            $element: $(),
+            level: currentLevel,
+            children: []
+          });
+        }
+        var last = currentTree.length - 1;
         currentTree = currentTree[last].children;
         currentLevel++;
       }
+
       currentTree.push({
         $element: $el,
         level: level,
@@ -263,9 +266,12 @@
       return output;
     },
     renderLeaf: function (leaf, options) {
-      var html = leaf.$element.text();
-      if (this.options.link) {
-        html = '<a href="#' + leaf.fragment + '">' + html + '</a>';
+      var html = '';
+      if (leaf.$element.length > 0) {
+        html += leaf.$element.text();
+        if (this.options.link) {
+          html = '<a href="#' + leaf.fragment + '">' + html + '</a>';
+        }
       }
 
       var classes = [];
