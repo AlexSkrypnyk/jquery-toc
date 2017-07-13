@@ -13,48 +13,34 @@
   // ////////////////////////////////// HELPERS ///////////////////////////// //
   // //////////////////////////////////////////////////////////////////////// //
 
-  function findItemsByText(text, isLink) {
-    var $item = null;
+  function getElementByText(text, parentSelectors, type) {
+    var $found = $();
 
-    isLink = isLink === null ? false : isLink;
-    if (!isLink) {
-      $item = $('.toc-container').find('li:contains("' + text + '")');
-    }
-    else {
-      $item = $('.toc-container').find('li a:contains("' + text + '")');
-    }
-
-    return $item;
-  }
-
-  function findAnchorByText(text) {
-    var $items = findItemsByText(text, true);
-    QUnit.assert.ok($items.length === 1, 'Item "' + text + '" is present');
-
-    var href = $items.attr('href');
-    if (href.indexOf('#') < 0) {
-      QUnit.assert.error('Found link "' + text + '" does not contain a fragment');
-    }
-
-    var fragment = href.substr(href.indexOf('#') + 1);
-
-    return $('#' + fragment);
-  }
-
-  function resetLocationHash() {
-    window.location.hash = '';
-  }
-
-  function getElementByText(text, $parents, type) {
     type = type || ELEMENT_TYPE_CONTENT;
     var $set = type === ELEMENT_TYPE_CONTENT ? getContentContainer() : getTocContainer();
-    if ($parents) {
-      $set = $set.find($parents);
+    if (parentSelectors) {
+      $set = $set.find(parentSelectors);
     }
-    return $set.find(':contains("' + text + '")').filter(function () {
+
+    // Element may contain the text itself.
+    if ($set.is(':contains("' + text + '")')) {
+      $found = $found.add($set.filter(function () {
+        // Filter out parent of the deepest element containing a text.
+        return $(this).find(':contains("' + text + '")').length === 0;
+      }));
+    }
+
+    $found = $found.add($set.find(':contains("' + text + '")').filter(function () {
       // Filter out parent of the deepest element containing a text.
       return $(this).find(':contains("' + text + '")').length === 0;
-    });
+    }));
+
+    return $found;
+  }
+
+  function setWindowLocationHash(hash) {
+    hash = hash || '';
+    window.location.hash = hash;
   }
 
   function getContentContainer() {
@@ -73,75 +59,23 @@
   // ////////////////////////////////// ASSERTIONS ////////////////////////// //
   // //////////////////////////////////////////////////////////////////////// //
 
-  QUnit.assert.tocItemPresent = function (text, level, idx, isLink) {
-    level = level || 1;
-    idx = idx || 0;
-
-    var $items = findItemsByText(text, isLink);
-    $items = $items.eq(idx);
-    this.ok($items.length === 1, 'Item "' + text + '" is present');
-
-    if ($items && $items.length > 0) {
-      var itemLevel = $items.parents('ul').length;
-      this.equal(itemLevel, level, 'Item "' + text + '" level is ' + itemLevel);
-    }
-  };
-
-  QUnit.assert.tocItemAbsent = function (text, idx, isLink) {
-    isLink = isLink === null ? false : isLink;
-    idx = idx || 0;
-
-    var $items = findItemsByText(text, isLink);
-    $items = $items.eq(idx);
-    this.ok($items.length === 0, 'Item "' + text + '" is absent');
-  };
-
-  QUnit.assert.tocAnchorPresent = function (id) {
-    id = id.indexOf('#') === 0 ? id.substr(1) : id;
-    QUnit.assert.equal($('#' + id).length, 1, 'Anchor with id "' + id + '" is present');
-  };
-
-  QUnit.assert.tocAnchorAbsent = function (id) {
-    id = id.indexOf('#') === 0 ? id.substr(1) : id;
-    QUnit.assert.equal($('#' + id).length, 0, 'Anchor with id "' + id + '" is absent');
-  };
-
-  QUnit.assert.tocSectionVisible = function (text, idx) {
-    idx = idx || 0;
-
-    var $anchors = findAnchorByText(text);
-    $anchors = $anchors.eq(idx);
-    this.ok($anchors.length === 1, 'Item "' + text + '" is present');
-
-    var $section = $anchors.parents('.toc-section-wrap').eq(idx);
-    this.ok($section.length === 1, 'Section for "' + text + '" is present');
-    this.ok($section.is(':visible'), 'Section for "' + text + '" is visible');
-  };
-
-  QUnit.assert.tocSectionInvisible = function (text, idx) {
-    idx = idx || 0;
-
-    var $anchors = findAnchorByText(text);
-    $anchors = $anchors.eq(idx);
-    this.ok($anchors.length === 1, 'Item "' + text + '" is present');
-
-    var $section = $anchors.parents('.toc-section-wrap').eq(idx);
-    this.ok($section.length === 1, 'Section for "' + text + '" is present');
-    this.ok(!$section.is(':visible'), 'Section for "' + text + '" is not visible');
-  };
-
   QUnit.assert.tocElementVisible = function (text, count) {
     count = count || 1;
     var $item = getElementByText(text, null, ELEMENT_TYPE_TOC);
-    this.equal($item.length, count, 'TOC element with text "' + text + '" is present');
-    this.ok($item.is(':visible'), 'TeOC Element with text "' + text + '" is visible');
+    this.ok($item.length > 0, 'Content element with text "' + text + '" is present');
+    this.equal($item.filter(':visible').length, count, 'TOC element with text "' + text + '" is visible');
   };
 
   QUnit.assert.tocElementInvisible = function (text, count) {
-    count = count || 1;
+    count = count || false;
     var $item = getElementByText(text, null, ELEMENT_TYPE_TOC);
-    this.equal($item.length, count, 'TOC element with text "' + text + '" is present');
-    this.ok(!$item.is(':visible'), 'TOC element with text "' + text + '" is invisible');
+    if (count === false) {
+      this.ok($item.filter(':visible').length === 0, 'TOC element with text "' + text + '" is invisible');
+    }
+    else {
+      this.ok($item.length > 0, 'TOC element with text "' + text + '" is present');
+      this.equal($item.filter(':not(:visible)').length, count, 'TOC element with text "' + text + '" is invisible');
+    }
   };
 
   QUnit.assert.contentElementVisible = function (text, count) {
@@ -152,10 +86,15 @@
   };
 
   QUnit.assert.contentElementInvisible = function (text, count) {
-    count = count || 1;
+    count = count || false;
     var $item = getElementByText(text);
-    this.ok($item.length > 0, 'Content element with text "' + text + '" is present');
-    this.equal($item.filter(':not(:visible)').length, count, 'Content element with text "' + text + '" is invisible');
+    if (count === false) {
+      this.ok($item.filter(':visible').length === 0, 'Content element with text "' + text + '" is invisible');
+    }
+    else {
+      this.ok($item.length > 0, 'Content element with text "' + text + '" is present');
+      this.equal($item.filter(':not(:visible)').length, count, 'Content element with text "' + text + '" is invisible');
+    }
   };
 
   QUnit.assert.urlFragment = function (url) {
@@ -201,7 +140,7 @@
 
   QUnit.test('getElementByText', function (assert) {
     this.injectHtml('<p>unique string</p>');
-    assert.equal(getElementByText('unique string').length, 1, 'Single occurance');
+    assert.equal(getElementByText('unique string').length, 1, 'Single occurrence');
 
     this.injectHtml('<p>unique string</p><p>unique string</p><p>unique string</p>');
     assert.equal(getElementByText('unique string').length, 3, 'All occurrences');
@@ -219,9 +158,12 @@
     var $s = getElementByText('unique string');
     assert.equal($s.length, 2, 'Only deepest items returned');
     assert.equal($s.find('span').length, 1, 'Returned deepest items preserve inner HTML');
+
+    this.injectHtml('<p><a>unique string</a></p><p>unique string</p>');
+    assert.equal(getElementByText('unique string', 'a').length, 1, 'Single occurrence within parent');
   });
 
-  QUnit.test('Assertions - Elements', function (assert) {
+  QUnit.test('Assertions - Content Elements', function (assert) {
     this.injectHtml('<p>unique string</p>');
     assert.contentElementVisible('unique string');
     assert.contentElementVisible('unique string', 1);
@@ -247,16 +189,52 @@
     this.injectHtml('<p>unique string</p>', 'content-container', true);
     assert.contentElementVisible('unique string', 1);
     assert.contentElementInvisible('unique string', 1);
+
+    // Invisible non-existing.
+    this.injectHtml('<p>unique string</p>');
+    assert.contentElementInvisible('unique string other');
+  });
+
+  QUnit.test('Assertions - TOC Elements', function (assert) {
+    this.injectHtml('<p>unique string</p>', 'toc-container');
+    assert.tocElementVisible('unique string');
+    assert.tocElementVisible('unique string', 1);
+
+    this.injectHtml('<p>unique string</p><p>unique string</p>', 'toc-container');
+    assert.tocElementVisible('unique string', 2);
+
+    this.injectHtml('<p>unique string</p>', 'toc-container').hide();
+    assert.tocElementInvisible('unique string');
+    assert.tocElementInvisible('unique string', 1);
+
+    this.injectHtml('<p>unique string</p><p>unique string</p>', 'toc-container').hide();
+    assert.tocElementInvisible('unique string', 2);
+
+    // One hidden, one visible.
+    this.injectHtml('<p>unique string</p>', 'toc-container').hide();
+    this.injectHtml('<p>unique string</p>', 'toc-container', true);
+    assert.tocElementVisible('unique string', 1);
+    assert.tocElementInvisible('unique string', 1);
+
+    // Visible within hidden parent is hidden.
+    this.injectHtml('<div class="unique-wrapper"><p>unique string</p></div>', 'toc-container').hide();
+    this.injectHtml('<p>unique string</p>', 'toc-container', true);
+    assert.tocElementVisible('unique string', 1);
+    assert.tocElementInvisible('unique string', 1);
+
+    // Invisible non-existing.
+    this.injectHtml('<p>unique string</p>', 'toc-container');
+    assert.tocElementInvisible('unique string other');
   });
 
   QUnit.test('Assertions - URL Fragment', function (assert) {
-    window.location.hash = '';
+    setWindowLocationHash();
     assert.urlFragment('');
 
-    window.location.hash = '';
+    setWindowLocationHash();
     assert.urlFragment('#');
 
-    window.location.hash = 'unique-hash';
+    setWindowLocationHash('unique-hash');
     assert.urlFragment('#unique-hash');
   });
 
@@ -266,44 +244,28 @@
       link: false
     });
 
-    assert.tocItemPresent('Heading 1 level 1', 1);
-    assert.tocAnchorAbsent('heading-1-level-1');
-    assert.tocItemPresent('Heading 11 level 2', 2);
-    assert.tocAnchorAbsent('heading-11-level-2');
-    assert.tocItemPresent('Heading 12 level 2', 2);
-    assert.tocAnchorAbsent('heading-12-level-2');
-    assert.tocAnchorAbsent('heading-12-level-2');
-    assert.tocItemPresent('Heading 13 level 2 repeating', 2, 0);
-    assert.tocAnchorAbsent('heading-13-level-2-repeating');
-    assert.tocItemPresent('Heading 13 level 2 repeating', 2, 1);
-    assert.tocAnchorAbsent('heading-13-level-2-repeating-2');
-    assert.tocItemPresent('Heading 13 level 2 repeating', 2, 2);
-    assert.tocAnchorAbsent('heading-13-level-2-repeating-3');
-    assert.tocItemPresent('Heading 2 level 1', 1);
-    assert.tocAnchorAbsent('heading-2-level-1');
-    assert.tocItemPresent('Heading 3 level 1', 1);
-    assert.tocAnchorAbsent('heading-3-level-1');
+    assert.tocElementVisible('Heading 1 level 1');
+    assert.tocElementVisible('Heading 11 level 2');
+    assert.tocElementVisible('Heading 12 level 2');
+    assert.tocElementVisible('Heading 13 level 2 repeating', 3);
+    assert.tocElementVisible('Heading 2 level 1');
+    assert.tocElementVisible('Heading 3 level 1');
 
-    assert.tocItemAbsent('Line 111');
-    assert.tocAnchorAbsent('line-111');
-    assert.tocItemAbsent('Line 112');
-    assert.tocAnchorAbsent('line-112');
-    assert.tocItemAbsent('Line 113');
-    assert.tocAnchorAbsent('line-113');
-    assert.tocItemAbsent('Line 121');
-    assert.tocAnchorAbsent('line-121');
-    assert.tocItemAbsent('Line 122');
-    assert.tocAnchorAbsent('line-122');
-    assert.tocItemAbsent('Line 123');
-    assert.tocAnchorAbsent('line-123');
-    assert.tocItemAbsent('Line 131');
-    assert.tocAnchorAbsent('line-131');
-    assert.tocItemAbsent('Line 132');
-    assert.tocAnchorAbsent('line-132');
-    assert.tocItemAbsent('Line 211');
-    assert.tocAnchorAbsent('line-211');
-    assert.tocItemAbsent('Line 213');
-    assert.tocAnchorAbsent('line-213');
+    assert.contentElementVisible('Heading 1 level 1');
+    assert.contentElementVisible('Heading 11 level 2');
+    assert.contentElementVisible('Heading 12 level 2');
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementVisible('Heading 2 level 1');
+    assert.contentElementVisible('Line 211');
+    assert.contentElementVisible('Line 213');
+    assert.contentElementVisible('Heading 3 level 1');
   });
 
   QUnit.test('TOC links', function (assert) {
@@ -311,43 +273,28 @@
       link: true
     });
 
-    assert.tocItemPresent('Heading 1 level 1', 1, 0, true);
-    assert.tocAnchorPresent('heading-1-level-1');
-    assert.tocItemPresent('Heading 11 level 2', 2, 0, true);
-    assert.tocAnchorPresent('heading-11-level-2');
-    assert.tocItemPresent('Heading 12 level 2', 2, 0, true);
-    assert.tocAnchorPresent('heading-12-level-2');
-    assert.tocItemPresent('Heading 13 level 2 repeating', 2, 0, true);
-    assert.tocAnchorPresent('heading-13-level-2-repeating');
-    assert.tocItemPresent('Heading 13 level 2 repeating', 2, 1, true);
-    assert.tocAnchorPresent('heading-13-level-2-repeating-2');
-    assert.tocItemPresent('Heading 13 level 2 repeating', 2, 2, true);
-    assert.tocAnchorPresent('heading-13-level-2-repeating-3');
-    assert.tocItemPresent('Heading 2 level 1', 1, 0, true);
-    assert.tocAnchorPresent('heading-2-level-1');
-    assert.tocItemPresent('Heading 3 level 1', 1, 0, true);
-    assert.tocAnchorPresent('heading-2-level-1');
+    assert.tocElementVisible('Heading 1 level 1');
+    assert.tocElementVisible('Heading 11 level 2');
+    assert.tocElementVisible('Heading 12 level 2');
+    assert.tocElementVisible('Heading 13 level 2 repeating', 3);
+    assert.tocElementVisible('Heading 2 level 1');
+    assert.tocElementVisible('Heading 3 level 1');
 
-    assert.tocItemAbsent('Line 111');
-    assert.tocAnchorAbsent('line-111');
-    assert.tocItemAbsent('Line 112');
-    assert.tocAnchorAbsent('line-112');
-    assert.tocItemAbsent('Line 113');
-    assert.tocAnchorAbsent('line-113');
-    assert.tocItemAbsent('Line 121');
-    assert.tocAnchorAbsent('line-121');
-    assert.tocItemAbsent('Line 122');
-    assert.tocAnchorAbsent('line-122');
-    assert.tocItemAbsent('Line 123');
-    assert.tocAnchorAbsent('line-123');
-    assert.tocItemAbsent('Line 131');
-    assert.tocAnchorAbsent('line-131');
-    assert.tocItemAbsent('Line 132');
-    assert.tocAnchorAbsent('line-132');
-    assert.tocItemAbsent('Line 211');
-    assert.tocAnchorAbsent('line-211');
-    assert.tocItemAbsent('Line 213');
-    assert.tocAnchorAbsent('line-213');
+    assert.contentElementVisible('Heading 1 level 1');
+    assert.contentElementVisible('Heading 11 level 2');
+    assert.contentElementVisible('Heading 12 level 2');
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementVisible('Heading 2 level 1');
+    assert.contentElementVisible('Line 211');
+    assert.contentElementVisible('Line 213');
+    assert.contentElementVisible('Heading 3 level 1');
   });
 
   QUnit.test('TOC links - top level', function (assert) {
@@ -355,26 +302,28 @@
       headings: ['h2'],
       link: true
     });
+    assert.tocElementVisible('Heading 1 level 1');
+    assert.tocElementInvisible('Heading 11 level 2');
+    assert.tocElementInvisible('Heading 12 level 2');
+    assert.tocElementInvisible('Heading 13 level 2 repeating');
+    assert.tocElementVisible('Heading 2 level 1');
+    assert.tocElementVisible('Heading 3 level 1');
 
-    assert.tocItemPresent('Heading 1 level 1', 1, 0, true);
-    assert.tocItemPresent('Heading 2 level 1', 1, 0, true);
-    assert.tocItemPresent('Heading 3 level 1', 1, 0, true);
-
-    assert.tocItemAbsent('Heading 11 level 2');
-    assert.tocItemAbsent('Heading 12 level 2');
-    assert.tocItemAbsent('Heading 13 level 2 repeating');
-    assert.tocItemAbsent('Heading 13 level 2 repeating');
-    assert.tocItemAbsent('Heading 13 level 2 repeating');
-    assert.tocItemAbsent('Line 111');
-    assert.tocItemAbsent('Line 112');
-    assert.tocItemAbsent('Line 113');
-    assert.tocItemAbsent('Line 121');
-    assert.tocItemAbsent('Line 122');
-    assert.tocItemAbsent('Line 123');
-    assert.tocItemAbsent('Line 131');
-    assert.tocItemAbsent('Line 132');
-    assert.tocItemAbsent('Line 211');
-    assert.tocItemAbsent('Line 213');
+    assert.contentElementVisible('Heading 1 level 1');
+    assert.contentElementVisible('Heading 11 level 2');
+    assert.contentElementVisible('Heading 12 level 2');
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementVisible('Heading 2 level 1');
+    assert.contentElementVisible('Line 211');
+    assert.contentElementVisible('Line 213');
+    assert.contentElementVisible('Heading 3 level 1');
   });
 
   QUnit.test('TOC links - non-top level', function (assert) {
@@ -383,37 +332,40 @@
       link: true
     });
 
-    assert.tocItemPresent('Heading 11 level 2', 1, 0, true);
-    assert.tocItemPresent('Heading 12 level 2', 1, 0, true);
-    assert.tocItemPresent('Heading 13 level 2 repeating', 1, 0, true);
-    assert.tocItemPresent('Heading 13 level 2 repeating', 1, 1, true);
-    assert.tocItemPresent('Heading 13 level 2 repeating', 1, 2, true);
+    assert.tocElementInvisible('Heading 1 level 1');
+    assert.tocElementVisible('Heading 11 level 2');
+    assert.tocElementVisible('Heading 12 level 2');
+    assert.tocElementVisible('Heading 13 level 2 repeating', 3);
+    assert.tocElementInvisible('Heading 2 level 1');
+    assert.tocElementInvisible('Heading 3 level 1');
 
-    assert.tocItemAbsent('Heading 1 level 1');
-    assert.tocItemAbsent('Heading 2 level 1');
-    assert.tocItemAbsent('Heading 3 level 1');
-    assert.tocItemAbsent('Line 111');
-    assert.tocItemAbsent('Line 112');
-    assert.tocItemAbsent('Line 113');
-    assert.tocItemAbsent('Line 121');
-    assert.tocItemAbsent('Line 122');
-    assert.tocItemAbsent('Line 123');
-    assert.tocItemAbsent('Line 131');
-    assert.tocItemAbsent('Line 132');
-    assert.tocItemAbsent('Line 211');
-    assert.tocItemAbsent('Line 213');
+    assert.contentElementVisible('Heading 1 level 1');
+    assert.contentElementVisible('Heading 11 level 2');
+    assert.contentElementVisible('Heading 12 level 2');
+    assert.contentElementVisible('Line 111');
+    assert.contentElementVisible('Line 112');
+    assert.contentElementVisible('Line 113');
+    assert.contentElementVisible('Line 121');
+    assert.contentElementVisible('Line 122');
+    assert.contentElementVisible('Line 123');
+    assert.contentElementVisible('Line 131');
+    assert.contentElementVisible('Line 132');
+    assert.contentElementVisible('Heading 2 level 1');
+    assert.contentElementVisible('Line 211');
+    assert.contentElementVisible('Line 213');
+    assert.contentElementVisible('Heading 3 level 1');
   });
 
   QUnit.module('Interaction', {
     beforeEach: function () {
       this.clickTocItem = function (text) {
-        var $link = findItemsByText(text, true);
+        var $link = getElementByText(text, null, ELEMENT_TYPE_TOC);
         QUnit.assert.ok($link.length > 0);
         $link.simulate('click');
         return $link;
       };
 
-      resetLocationHash();
+      setWindowLocationHash();
     }
   });
   QUnit.test('TOC click fragment', function (assert) {
@@ -578,5 +530,4 @@
       }, 100);
     }, 100);
   });
-
 }(jQuery));
