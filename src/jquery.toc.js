@@ -240,7 +240,14 @@
       if (fragment.indexOf('#') >= 0) {
         fragment = fragment.substr(fragment.indexOf('#') + 1);
       }
-      window.location.hash = fragment;
+
+      if (history.replaceState) {
+        history.scrollRestoration = 'manual';
+        history.replaceState(null, null, '#' + fragment);
+      }
+      else {
+        window.location.hash = fragment;
+      }
     },
     treeToList: function (tree) {
       var list = [];
