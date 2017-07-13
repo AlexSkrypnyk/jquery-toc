@@ -6,6 +6,9 @@
 (function ($) {
   'use strict';
 
+  var ELEMENT_TYPE_TOC = 'toc';
+  var ELEMENT_TYPE_CONTENT = 'content';
+
   // //////////////////////////////////////////////////////////////////////// //
   // ////////////////////////////////// HELPERS ///////////////////////////// //
   // //////////////////////////////////////////////////////////////////////// //
@@ -26,7 +29,7 @@
 
   function findAnchorByText(text) {
     var $items = findItemsByText(text, true);
-    QUnit.assert.ok($items.length === 0, 'Item "' + text + '" is present');
+    QUnit.assert.ok($items.length === 1, 'Item "' + text + '" is present');
 
     var href = $items.attr('href');
     if (href.indexOf('#') < 0) {
@@ -47,6 +50,30 @@
     QUnit.assert.ok($link.length > 0);
     $link.simulate('click');
     return $link;
+  }
+
+  function getElementByText(text, $parents, type) {
+    type = type || ELEMENT_TYPE_CONTENT;
+    var $set = type === ELEMENT_TYPE_CONTENT ? getContentContainer() : getTocContainer();
+    if ($parents) {
+      $set = $set.find($parents);
+    }
+    return $set.find(':contains("' + text + '")').filter(function () {
+      // Filter out parent of the deepest element containing a text.
+      return $(this).find(':contains("' + text + '")').length === 0;
+    });
+  }
+
+  function getContentContainer() {
+    return getFixtureContainer().find('.content-container');
+  }
+
+  function getTocContainer() {
+    return getFixtureContainer().find('.toc-container');
+  }
+
+  function getFixtureContainer() {
+    return $('#qunit-fixture');
   }
 
   // //////////////////////////////////////////////////////////////////////// //
@@ -110,13 +137,120 @@
     this.ok(!$section.is(':visible'), 'Section for "' + text + '" is not visible');
   };
 
+  QUnit.assert.tocElementVisible = function (text, count) {
+    count = count || 1;
+    var $item = getElementByText(text, null, ELEMENT_TYPE_TOC);
+    this.equal($item.length, count, 'TOC element with text "' + text + '" is present');
+    this.ok($item.is(':visible'), 'TeOC Element with text "' + text + '" is visible');
+  };
+
+  QUnit.assert.tocElementInvisible = function (text, count) {
+    count = count || 1;
+    var $item = getElementByText(text, null, ELEMENT_TYPE_TOC);
+    this.equal($item.length, count, 'TOC element with text "' + text + '" is present');
+    this.ok(!$item.is(':visible'), 'TOC element with text "' + text + '" is invisible');
+  };
+
+  QUnit.assert.contentElementVisible = function (text, count) {
+    count = count || 1;
+    var $item = getElementByText(text);
+    this.ok($item.length > 0, 'Content element with text "' + text + '" is present');
+    this.equal($item.filter(':visible').length, count, 'Content element with text "' + text + '" is visible');
+  };
+
+  QUnit.assert.contentElementInvisible = function (text, count) {
+    count = count || 1;
+    var $item = getElementByText(text);
+    this.ok($item.length > 0, 'Content element with text "' + text + '" is present');
+    this.equal($item.filter(':not(:visible)').length, count, 'Content element with text "' + text + '" is invisible');
+  };
+
   // //////////////////////////////////////////////////////////////////////// //
   // ////////////////////////////////// TESTS /////////////////////////////// //
   // //////////////////////////////////////////////////////////////////////// //
+  QUnit.module('Test API', {
+    before: function () {
+      this.injectHtml = function (html, className, append) {
+        className = className || 'content-container';
+        append = append || false;
+        var $fixtureContainer = getFixtureContainer();
+        var $container = null;
+        if (!append) {
+          $fixtureContainer.empty();
+          $container = $('<div class="' + className + '"></div>').appendTo($fixtureContainer);
+        }
+        else {
+          $container = $fixtureContainer.find('.' + className);
+        }
+        return $(html).appendTo($container);
+      };
+    }
+  });
+  QUnit.test('Test containers', function (assert) {
+    assert.equal(getFixtureContainer().length, 1, 'Fixture container is present');
+
+    getFixtureContainer().empty();
+
+    getFixtureContainer().append('<div class="content-container"></div>');
+    assert.equal(getContentContainer().length, 1, 'Content container is present');
+
+    getFixtureContainer().append('<div class="toc-container"></div>');
+    assert.equal(getTocContainer().length, 1, 'TOC container is present');
+  });
+
+  QUnit.test('getElementByText', function (assert) {
+    this.injectHtml('<p>unique string</p>');
+    assert.equal(getElementByText('unique string').length, 1, 'Single occurance');
+
+    this.injectHtml('<p>unique string</p><p>unique string</p><p>unique string</p>');
+    assert.equal(getElementByText('unique string').length, 3, 'All occurrences');
+
+    this.injectHtml('<p>unique string</p>', 'toc-container');
+    assert.equal(getElementByText('unique string').length, 0, 'Uses content container by default');
+
+    this.injectHtml('<p>unique string</p>', 'toc-container');
+    assert.equal(getElementByText('unique string', null, ELEMENT_TYPE_TOC).length, 1, 'TOC container');
+
+    this.injectHtml('<div><div><p>unique string</p></div></div><div><div><p>unique string</p></div></div>');
+    assert.equal(getElementByText('unique string').length, 2, 'Only deepest items returned');
+
+    this.injectHtml('<div><div><p>unique string <span>something</span></p></div></div><div><div><p>unique string</p></div></div>');
+    var $s = getElementByText('unique string');
+    assert.equal($s.length, 2, 'Only deepest items returned');
+    assert.equal($s.find('span').length, 1, 'Returned deepest items preserve inner HTML');
+  });
+
+  QUnit.test('Assertions', function (assert) {
+    this.injectHtml('<p>unique string</p>');
+    assert.contentElementVisible('unique string');
+    assert.contentElementVisible('unique string', 1);
+
+    this.injectHtml('<p>unique string</p><p>unique string</p>');
+    assert.contentElementVisible('unique string', 2);
+
+    this.injectHtml('<p>unique string</p>').hide();
+    assert.contentElementInvisible('unique string');
+    assert.contentElementInvisible('unique string', 1);
+
+    this.injectHtml('<p>unique string</p><p>unique string</p>').hide();
+    assert.contentElementInvisible('unique string', 2);
+
+    // One hidden, one visible.
+    this.injectHtml('<p>unique string</p>').hide();
+    this.injectHtml('<p>unique string</p>', 'content-container', true);
+    assert.contentElementVisible('unique string', 1);
+    assert.contentElementInvisible('unique string', 1);
+
+    // Visible within hidden parent is hidden.
+    this.injectHtml('<div class="unique-wrapper"><p>unique string</p></div>').hide();
+    this.injectHtml('<p>unique string</p>', 'content-container', true);
+    assert.contentElementVisible('unique string', 1);
+    assert.contentElementInvisible('unique string', 1);
+  });
 
   QUnit.module('Structure');
   QUnit.test('TOC plain text', function (assert) {
-    $('.content-container').toc({
+    getContentContainer().toc({
       link: false
     });
 
@@ -282,20 +416,29 @@
     assert.equal(window.location.hash, $link.attr('href'));
   });
 
-  QUnit.only('TOC collapsible', function (assert) {
+  QUnit.test('TOC collapsible', function (assert) {
     $('.content-container').toc({
       link: true,
       levelsCollapsible: [0],
       levelsCollapsed: true
     });
 
-    // Fix test here
-    assert.tocSectionVisible('Heading 1 level 1');
-    assert.tocSectionVisible('Heading 11 level 2');
-    assert.tocSectionVisible('Heading 12 level 2');
-    assert.tocSectionInvisible('Heading 2 level 1');
-    assert.tocSectionInvisible('Heading 2 level 1');
+    // assert.tocElementVisible('Heading 1 level 1');
+    // assert.tocElementVisible('Heading 11 level 2');
+    // assert.tocElementVisible('Heading 12 level 2');
+    assert.tocElementVisible('Heading 13 level 2 repeating', 3);
+    // assert.tocElementVisible('Heading 2 level 1');
+    // assert.tocElementVisible('Heading 3 level 1');
 
+    //
+    // assert.tocElementVisible('Heading 1 level 1');
+    // assert.tocSectionVisible('Heading 11 level 2');
+    // assert.tocSectionVisible('Heading 12 level 2');
+    // assert.tocSectionInvisible('Heading 2 level 1');
+    // assert.tocSectionInvisible('Heading 3 level 1');
+
+    // assert.contentElementVisible('Heading 1 level 1');
+    // assert.contentElementInvisible('Heading 3 level 1');
 
     // var $link;
     // $link = clickLink('Heading 1 level 1');
