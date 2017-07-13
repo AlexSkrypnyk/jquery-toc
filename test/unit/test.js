@@ -530,4 +530,102 @@
       }, 100);
     }, 100);
   });
+
+  QUnit.only('TOC events - Pager', function (assert) {
+    var self = this;
+    // Since this test deals with collapsing/expanding of the content, which
+    // take time, sequential expanding/collapsing must be handled within delayed
+    // callbacks, therefore a test timeout should be set.
+    //
+    // 2 seconds is 4-6 times more than required for transitions within tests.
+    assert.timeout(2000);
+
+    getContentContainer().toc({
+      link: true,
+      levelsCollapsible: [0],
+      levelsCollapsed: true
+    });
+
+    var $prev = $('<a class="toc-btn-prev">< Prev</a>').on('click', function () {
+      getContentContainer().trigger('prev.toc', {
+        level: 0
+      });
+      return false;
+    });
+
+    var $next = $('<a class="toc-btn-next">Next ></a>').on('click', function () {
+      getContentContainer().trigger('next.toc', {
+        level: 0
+      });
+      return false;
+    });
+
+    getContentContainer().append($prev);
+    getContentContainer().append($next);
+
+    // Allow hiding and showing pager buttons.
+    $(document).on('shown.toc', function (evt, data) {
+      if (data.tocElement.parent().hasClass('first')) {
+        $('.toc-btn-prev').hide();
+      }
+      else {
+        $('.toc-btn-prev').show();
+      }
+
+      if (data.tocElement.parent().hasClass('last')) {
+        $('.toc-btn-next').hide();
+      }
+      else {
+        $('.toc-btn-next').show();
+      }
+    });
+
+    assert.contentElementVisible('< Prev');
+    assert.contentElementVisible('Next >');
+
+    // Assert that clicking on the second top-level item from closed section
+    // opens that section and closes current one.
+    assert.urlFragment(self.clickTocItem('Heading 2 level 1').attr('href'));
+    var done1 = assert.async();
+    setTimeout(function () {
+      assert.contentElementVisible('Line 211');
+      assert.contentElementInvisible('Line 111');
+      assert.contentElementVisible('< Prev');
+      assert.contentElementVisible('Next >');
+      done1();
+
+      // Click on the Previous page link - section 1.
+      $prev.simulate('click');
+      var done2 = assert.async();
+      setTimeout(function () {
+        assert.contentElementVisible('Line 111');
+        assert.contentElementInvisible('Line 211');
+        assert.contentElementInvisible('< Prev');
+        assert.contentElementVisible('Next >');
+        done2();
+
+        // Click on the Next page link - section 2.
+        $next.simulate('click');
+        var done3 = assert.async();
+        setTimeout(function () {
+          assert.contentElementInvisible('Line 111');
+          assert.contentElementVisible('Line 211');
+          assert.contentElementVisible('< Prev');
+          assert.contentElementVisible('Next >');
+          done3();
+
+          // Click on the Next page link again - Section 3.
+          $next.simulate('click');
+          var done4 = assert.async();
+          setTimeout(function () {
+            assert.contentElementInvisible('Line 111');
+            assert.contentElementInvisible('Line 211');
+            assert.contentElementVisible('< Prev');
+            assert.contentElementInvisible('Next >');
+            done4();
+          }, 100);
+        }, 100);
+      }, 100);
+    }, 100);
+  });
 }(jQuery));
