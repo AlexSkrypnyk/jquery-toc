@@ -23,13 +23,11 @@
     this.options = $.extend({}, {
       headings: ['h2', 'h3', 'h4'],
       pager: false,
-      contentCollapsible: false,
-      contentCollapse: false,
       levelsCollapsible: [],
       levelsCollapsed: false,
       link: true,
       sectionClass: 'toc-section-wrap',
-      trackClicked: false
+      tocContainerClass: 'toc-container'
     }, options);
 
     this.$element = $(element);
@@ -51,7 +49,7 @@
 
         if (self.options.levelsCollapsible.length > 0) {
           self.wrapAllCollapsed(self.tree);
-          $(window).on('hashchange', function () {
+          $(window).on('hashchange.toc', function () {
             var activeItem = self.findActiveItem(window.location.hash.substr(1));
             activeItem = activeItem ? activeItem : self.getDefaultActiveSection();
             if (activeItem) {
@@ -62,12 +60,6 @@
       }
 
       self.$toc = self.renderToc(self.tree);
-
-      if (self.options.trackClicked) {
-        self.$toc.find('a').on('click.toc', function () {
-          self.trackClickedLink($(this).attr('href'));
-        });
-      }
 
       self.$element.before(self.$toc);
 
@@ -88,18 +80,15 @@
       });
 
       if (self.options.levelsCollapsed) {
-        $(window).trigger('hashchange');
+        $(window).trigger('hashchange.toc');
       }
-    },
-    trackClickedLink: function () {
-
     },
     toggleSectionsVisibility: function (activeItem) {
       this.getAllSections().hide();
       var $sections = this.getAllSectionsFromItem(activeItem);
       $sections.show();
 
-      var $tocElement = $('.toc-container').find('a[href="#' + activeItem.anchor + '"]');
+      var $tocElement = $('.' + this.options.tocContainerClass).find('a[href="#' + activeItem.anchor + '"]');
       this.$element.trigger('shown.toc', {
         element: activeItem.element,
         tocElement: $tocElement
@@ -265,7 +254,7 @@
       $set.wrapAll('<div class="' + this.options.sectionClass + ' level-' + level + '"></div>');
     },
     renderToc: function (tree) {
-      var output = '<div class="toc-container">';
+      var output = '<div class="' + this.options.tocContainerClass + '">';
       output += this.renderList(tree);
       output += '</div>';
       return output;
