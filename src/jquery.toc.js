@@ -104,7 +104,8 @@
       var $tocLink = this.getTocLinkFromLeaf(activeLeaf);
       this.$element.trigger(this.EVENT_SECTION_SHOWN, {
         contentElement: activeLeaf.$element,
-        tocLink: $tocLink
+        tocLink: $tocLink,
+        level: activeLeaf.level
       });
       this.setCurrentFragment(activeLeaf.fragment);
       this.processActiveTocLink($tocLink);
@@ -126,29 +127,98 @@
     getAllSectionsFromLeaf: function (leaf) {
       return leaf.$element.parent('.' + this.options.sectionClass);
     },
-    findNextLeafByFragment: function (fragment, level) {
-      var list = this.treeToList(this.tree).filter(function (el) {
-        return el.level === level;
-      });
+    findPrevLeafByFragment: function (fragment, level) {
+      var leaf = null;
 
-      for (var i = 0; i < list.length; i++) {
-        if (list[i].fragment === fragment && i + 1 < list.length) {
-          return list[i + 1];
+      var currentLeaf = this.findActiveLeaf(fragment);
+
+      if (currentLeaf.level === level) {
+        var siblingLeaves = this.findSiblingLeaves(this.tree, currentLeaf);
+        leaf = this.getPrevSiblingLeave(siblingLeaves, currentLeaf);
+      }
+      else {
+        var parentLeaves = this.findParentLeaves(this.tree, currentLeaf);
+        for (var k = 0; k < parentLeaves.length; k++) {
+          if (parentLeaves[k].level === level) {
+            var parentSiblingLeaves = this.findSiblingLeaves(this.tree, parentLeaves[k]);
+            leaf = this.getPrevSiblingLeave(parentSiblingLeaves, parentLeaves[k]);
+            break;
+          }
         }
+      }
+
+      return leaf;
+    },
+    findNextLeafByFragment: function (fragment, level) {
+      var leaf = null;
+
+      var currentLeaf = this.findActiveLeaf(fragment);
+
+      if (currentLeaf.level === level) {
+        var siblingLeaves = this.findSiblingLeaves(this.tree, currentLeaf);
+        leaf = this.getNextSiblingLeave(siblingLeaves, currentLeaf);
+      }
+      else {
+        var parentLeaves = this.findParentLeaves(this.tree, currentLeaf);
+        for (var k = 0; k < parentLeaves.length; k++) {
+          if (parentLeaves[k].level === level) {
+            var parentSiblingLeaves = this.findSiblingLeaves(this.tree, parentLeaves[k]);
+            leaf = this.getNextSiblingLeave(parentSiblingLeaves, parentLeaves[k]);
+            break;
+          }
+        }
+      }
+
+      return leaf;
+    },
+    getNextSiblingLeave: function (tree, currentLeave) {
+      var i = 0;
+      while (tree[i] !== currentLeave && i < tree.length) {
+        i++;
+      }
+
+      if (i + 1 < tree.length) {
+        return tree[i + 1];
       }
       return null;
     },
-    findPrevLeafByFragment: function (fragment, level) {
-      var list = this.treeToList(this.tree).filter(function (el) {
-        return el.level === level;
-      });
+    getPrevSiblingLeave: function (tree, currentLeave) {
+      var i = 0;
+      while (tree[i] !== currentLeave && i < tree.length) {
+        i++;
+      }
 
-      for (var i = 0; i < list.length; i++) {
-        if (list[i].fragment === fragment && i - 1 >= 0) {
-          return list[i - 1];
-        }
+      if (i - 1 >= 0) {
+        return tree[i - 1];
       }
       return null;
+    },
+    findParentLeaves: function (tree, leaf) {
+      var parents = [];
+      for (var i = 0; i < tree.length; i++) {
+        for (var j = 0; j < tree[i].children.length; j++) {
+          if (tree[i].children[j] === leaf) {
+            parents.push(tree[i]);
+          }
+          $.merge(parents, this.findParentLeaves(tree[i].children[j].children, leaf));
+        }
+      }
+
+      return parents;
+    },
+    findSiblingLeaves: function (tree, leaf) {
+      for (var i = 0; i < tree.length; i++) {
+        if (tree[i] === leaf) {
+          return tree;
+        }
+
+        var children = this.findSiblingLeaves(tree[i].children, leaf);
+        if (children.length > 0) {
+          return children;
+        }
+      }
+
+      return [];
     },
     findActiveLeaf: function (fragment) {
       var $activeLeaf = this.treeToList(this.tree).filter(function (leaf) {

@@ -728,4 +728,215 @@
       }, 100);
     }, 100);
   });
+
+  QUnit.test('TOC events - Pager - Child section', function (assert) {
+    var self = this;
+    // Since this test deals with collapsing/expanding of the content, which
+    // take time, sequential expanding/collapsing must be handled within delayed
+    // callbacks, therefore a test timeout should be set.
+    //
+    // 2 seconds is 4-6 times more than required for transitions within tests.
+    assert.timeout(2000);
+
+    getContentContainer().toc({
+      link: true,
+      levelsCollapsible: [0],
+      levelsCollapsed: true
+    });
+
+    var $prev = $('<a class="toc-btn-prev">< Prev</a>').on('click', function () {
+      getContentContainer().trigger('prev.toc', {
+        level: 0
+      });
+      return false;
+    });
+
+    var $next = $('<a class="toc-btn-next">Next ></a>').on('click', function () {
+      getContentContainer().trigger('next.toc', {
+        level: 0
+      });
+      return false;
+    });
+
+    getContentContainer().append($prev);
+    getContentContainer().append($next);
+
+    // Allow hiding and showing pager buttons, but only for specific level.
+    $(document).on('shown.toc.section', function (evt, data) {
+      if (data.tocLink.parent().hasClass('first') && data.level === 0) {
+        $('.toc-btn-prev').hide();
+      }
+      else {
+        $('.toc-btn-prev').show();
+      }
+
+      if (data.tocLink.parent().hasClass('last') && data.level === 0) {
+        $('.toc-btn-next').hide();
+      }
+      else {
+        $('.toc-btn-next').show();
+      }
+    });
+
+    assert.contentElementVisible('Line 111');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementInvisible('Line 311');
+
+    self.assertTocItemActive('Heading 1 level 1');
+    self.assertTocItemNotActive('Heading 11 level 2');
+    self.assertTocItemNotActive('Heading 12 level 2');
+    self.assertTocItemNotActive('Heading 2 level 1');
+    self.assertTocItemNotActive('Heading 21 level 2');
+    self.assertTocItemNotActive('Heading 3 level 1');
+
+    assert.contentElementVisible('< Prev');
+    assert.contentElementVisible('Next >');
+
+    // L1 -> L12
+    assert.urlFragment(self.clickTocItem('Heading 12 level 2').attr('href'));
+    var done1 = assert.async();
+    setTimeout(function () {
+      assert.contentElementVisible('Line 111');
+      assert.contentElementInvisible('Line 211');
+      assert.contentElementInvisible('Line 311');
+
+      self.assertTocItemActive('Heading 1 level 1');
+      self.assertTocItemNotActive('Heading 11 level 2');
+      self.assertTocItemActive('Heading 12 level 2');
+      self.assertTocItemNotActive('Heading 2 level 1');
+      self.assertTocItemNotActive('Heading 21 level 2');
+      self.assertTocItemNotActive('Heading 3 level 1');
+
+      assert.contentElementVisible('< Prev');
+      assert.contentElementVisible('Next >');
+
+      done1();
+
+      // L12 --Next--> L2
+      $next.simulate('click');
+      var done2 = assert.async();
+      setTimeout(function () {
+        assert.contentElementInvisible('Line 111');
+        assert.contentElementVisible('Line 211');
+        assert.contentElementInvisible('Line 311');
+
+        self.assertTocItemNotActive('Heading 1 level 1');
+        self.assertTocItemNotActive('Heading 11 level 2');
+        self.assertTocItemNotActive('Heading 12 level 2');
+        self.assertTocItemActive('Heading 2 level 1');
+        self.assertTocItemNotActive('Heading 21 level 2');
+        self.assertTocItemNotActive('Heading 3 level 1');
+
+        assert.contentElementVisible('< Prev');
+        assert.contentElementVisible('Next >');
+
+        done2();
+
+        // L2 -> L21
+        assert.urlFragment(self.clickTocItem('Heading 21 level 2').attr('href'));
+        var done3 = assert.async();
+        setTimeout(function () {
+          assert.contentElementInvisible('Line 111');
+          assert.contentElementVisible('Line 211');
+          assert.contentElementInvisible('Line 311');
+
+          self.assertTocItemNotActive('Heading 1 level 1');
+          self.assertTocItemNotActive('Heading 11 level 2');
+          self.assertTocItemNotActive('Heading 12 level 2');
+          self.assertTocItemActive('Heading 2 level 1');
+          self.assertTocItemActive('Heading 21 level 2');
+          self.assertTocItemNotActive('Heading 3 level 1');
+
+          assert.contentElementVisible('< Prev');
+          assert.contentElementVisible('Next >');
+
+          done3();
+
+          // L21 --Next--> L3
+          $next.simulate('click');
+          var done4 = assert.async();
+          setTimeout(function () {
+            assert.contentElementInvisible('Line 111');
+            assert.contentElementInvisible('Line 211');
+            assert.contentElementVisible('Line 311');
+
+            self.assertTocItemNotActive('Heading 1 level 1');
+            self.assertTocItemNotActive('Heading 11 level 2');
+            self.assertTocItemNotActive('Heading 12 level 2');
+            self.assertTocItemNotActive('Heading 2 level 1');
+            self.assertTocItemNotActive('Heading 21 level 2');
+            self.assertTocItemActive('Heading 3 level 1');
+
+            assert.contentElementVisible('< Prev');
+            assert.contentElementInvisible('Next >');
+
+            done4();
+
+            // L3 --Prev--> L2
+            $prev.simulate('click');
+            var done5 = assert.async();
+            setTimeout(function () {
+              assert.contentElementInvisible('Line 111');
+              assert.contentElementVisible('Line 211');
+              assert.contentElementInvisible('Line 311');
+
+              self.assertTocItemNotActive('Heading 1 level 1');
+              self.assertTocItemNotActive('Heading 11 level 2');
+              self.assertTocItemNotActive('Heading 12 level 2');
+              self.assertTocItemActive('Heading 2 level 1');
+              self.assertTocItemNotActive('Heading 21 level 2');
+              self.assertTocItemNotActive('Heading 3 level 1');
+
+              assert.contentElementVisible('< Prev');
+              assert.contentElementVisible('Next >');
+
+              done5();
+
+              // L2 -> L21
+              assert.urlFragment(self.clickTocItem('Heading 21 level 2').attr('href'));
+              var done6 = assert.async();
+              setTimeout(function () {
+                assert.contentElementInvisible('Line 111');
+                assert.contentElementVisible('Line 211');
+                assert.contentElementInvisible('Line 311');
+
+                self.assertTocItemNotActive('Heading 1 level 1');
+                self.assertTocItemNotActive('Heading 11 level 2');
+                self.assertTocItemNotActive('Heading 12 level 2');
+                self.assertTocItemActive('Heading 2 level 1');
+                self.assertTocItemActive('Heading 21 level 2');
+                self.assertTocItemNotActive('Heading 3 level 1');
+
+                assert.contentElementVisible('< Prev');
+                assert.contentElementVisible('Next >');
+
+                done6();
+
+                // L21 --Prev-> L1
+                $prev.simulate('click');
+                var done7 = assert.async();
+                setTimeout(function () {
+                  assert.contentElementVisible('Line 111');
+                  assert.contentElementInvisible('Line 211');
+                  assert.contentElementInvisible('Line 311');
+
+                  self.assertTocItemActive('Heading 1 level 1');
+                  self.assertTocItemNotActive('Heading 11 level 2');
+                  self.assertTocItemNotActive('Heading 12 level 2');
+                  self.assertTocItemNotActive('Heading 2 level 1');
+                  self.assertTocItemNotActive('Heading 21 level 2');
+                  self.assertTocItemNotActive('Heading 3 level 1');
+
+                  assert.contentElementInvisible('< Prev');
+                  assert.contentElementVisible('Next >');
+
+                  done7();
+                }, 100);
+              }, 100);
+            }, 100);
+          }, 100);
+        }, 100);
+      }, 100);
+    }, 100);
+  });
 }(jQuery));
