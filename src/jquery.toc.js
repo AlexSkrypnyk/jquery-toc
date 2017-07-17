@@ -35,6 +35,7 @@
       tocContainerClass: 'toc-container',
       tocAnchorClass: 'toc-anchor',
       tocAnchorPrefix: 'toc-anchor-',
+      defaultTocItem: 0,
       afterRender: function ($tocContainer) {
       }
     }, options);
@@ -73,8 +74,12 @@
             else if (fragment.indexOf(self.options.tocAnchorPrefix) === 0) {
               activeLeaf = self.findActiveLeaf(fragment);
             }
+
             if (activeLeaf) {
               self.showSection(activeLeaf);
+            }
+            else {
+              self.hideAllSections();
             }
           });
         }
@@ -108,7 +113,7 @@
       }
     },
     showSection: function (activeLeaf) {
-      this.getAllSections().hide();
+      this.hideAllSections();
       var $sections = this.getAllSectionsFromLeaf(activeLeaf);
       $sections.show();
 
@@ -120,6 +125,9 @@
       });
       this.setCurrentFragment(activeLeaf.fragment);
       this.processActiveTocLink($tocLink);
+    },
+    hideAllSections: function () {
+      this.getAllSections().hide();
     },
     processActiveTocLink: function ($link) {
       var $parents = $link.parentsUntil(this.getTocContainer()).filter('li');
@@ -249,7 +257,7 @@
       return $activeLeaf.length > 0 ? $activeLeaf.pop() : null;
     },
     getDefaultActiveSection: function () {
-      return this.tree.length > 0 ? this.tree[0] : null;
+      return this.tree.length > 0 && this.options.defaultTocItem !== false && this.options.defaultTocItem < this.tree.length ? this.tree[this.options.defaultTocItem] : null;
     },
     getCurrentFragment: function () {
       return window.location.hash.substr(1);

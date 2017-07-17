@@ -595,6 +595,81 @@
     }, 100);
   });
 
+  QUnit.only('TOC collapsible - No default', function (assert) {
+    var self = this;
+    // Since this test deals with collapsing/expanding of the content, which
+    // take time, sequential expanding/collapsing must be handled within delayed
+    // callbacks, therefore a test timeout should be set.
+    //
+    // 2 seconds is 4-6 times more than required for transitions within tests.
+    assert.timeout(2000);
+
+    getContentContainer().toc({
+      link: true,
+      levelsCollapsible: [0],
+      levelsCollapsed: true,
+      defaultTocItem: false
+    });
+
+    // Assert that all TOC items are in place.
+    assert.tocElementVisible('Heading 1 level 1');
+    assert.tocElementVisible('Heading 11 level 2');
+    assert.tocElementVisible('Heading 12 level 2');
+    assert.tocElementVisible('Heading 13 level 2 repeating', 3);
+    assert.tocElementVisible('Heading 2 level 1');
+    assert.tocElementVisible('Heading 3 level 1');
+
+    assert.contentElementInvisible('Heading 1 level 1');
+    assert.contentElementInvisible('Heading 11 level 2');
+    assert.contentElementInvisible('Heading 12 level 2');
+    assert.contentElementInvisible('Line 111');
+    assert.contentElementInvisible('Line 112');
+    assert.contentElementInvisible('Line 113');
+    assert.contentElementInvisible('Line 121');
+    assert.contentElementInvisible('Line 122');
+    assert.contentElementInvisible('Line 123');
+    assert.contentElementInvisible('Line 131');
+    assert.contentElementInvisible('Line 132');
+    assert.contentElementInvisible('Heading 2 level 1');
+    assert.contentElementInvisible('Line 211');
+    assert.contentElementInvisible('Line 213');
+    assert.contentElementInvisible('Heading 3 level 1');
+
+    self.assertTocItemNotActive('Heading 1 level 1');
+    self.assertTocItemNotActive('Heading 11 level 2');
+    self.assertTocItemNotActive('Heading 12 level 2');
+    self.assertTocItemNotActive('Heading 2 level 1');
+    self.assertTocItemNotActive('Heading 3 level 1');
+
+    // Click TOC links and make sure that relevant items are visible/invisible.
+
+    // Assert that clicking on the already opened top-level item from open
+    // section preserves the state of that section.
+    assert.urlFragment(self.clickTocItem('Heading 1 level 1').attr('href'));
+    var done = assert.async();
+    setTimeout(function () {
+      assert.contentElementVisible('Line 111');
+      assert.contentElementVisible('Line 112');
+      assert.contentElementVisible('Line 113');
+      assert.contentElementVisible('Line 121');
+      assert.contentElementVisible('Line 122');
+      assert.contentElementVisible('Line 123');
+      assert.contentElementVisible('Line 131');
+      assert.contentElementVisible('Line 132');
+      assert.contentElementInvisible('Heading 2 level 1');
+      assert.contentElementInvisible('Line 211');
+      assert.contentElementInvisible('Line 213');
+      assert.contentElementInvisible('Heading 3 level 1');
+
+      self.assertTocItemActive('Heading 1 level 1');
+      self.assertTocItemNotActive('Heading 11 level 2');
+      self.assertTocItemNotActive('Heading 12 level 2');
+      self.assertTocItemNotActive('Heading 2 level 1');
+      self.assertTocItemNotActive('Heading 3 level 1');
+      done();
+    }, 100);
+  });
+
   QUnit.test('TOC events - Pager', function (assert) {
     var self = this;
     // Since this test deals with collapsing/expanding of the content, which
